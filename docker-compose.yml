@@ -1,0 +1,150 @@
+version: '3.9'
+
+# ==============================================================================
+# Telegram Signal Translator Bot - Docker Compose Configuration
+# ==============================================================================
+# Usage:
+#   docker-compose up -d          # Start all services
+#   docker-compose logs -f app    # View application logs
+#   docker-compose down           # Stop all services
+# ==============================================================================
+
+services:
+  # ============================================================================
+  # PostgreSQL Database
+  # ============================================================================
+  db:
+    image: postgres:15-alpine
+    container_name: signal_bot_db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-signal_bot}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro  # Auto-run migrations on first start
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-signal_bot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - signal_bot_network
+
+  # ============================================================================
+  # Redis Cache (Optional)
+  # ============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: signal_bot_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - signal_bot_network
+
+  # ============================================================================
+  # Application
+  # ============================================================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: signal_bot_app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Telegram Reader Account
+      - READER_API_ID=${READER_API_ID:?READER_API_ID is required}
+      - READER_API_HASH=${READER_API_HASH:?READER_API_HASH is required}
+      - READER_PHONE=${READER_PHONE:?READER_PHONE is required}
+      - READER_SESSION_FILE=${READER_SESSION_FILE:-reader.session}
+
+      # Telegram Publisher Account
+      - PUBLISHER_API_ID=${PUBLISHER_API_ID:?PUBLISHER_API_ID is required}
+      - PUBLISHER_API_HASH=${PUBLISHER_API_HASH:?PUBLISHER_API_HASH is required}
+      - PUBLISHER_PHONE=${PUBLISHER_PHONE:?PUBLISHER_PHONE is required}
+      - PUBLISHER_SESSION_FILE=${PUBLISHER_SESSION_FILE:-publisher.session}
+
+      # Group IDs
+      - SOURCE_GROUP_ID=${SOURCE_GROUP_ID:?SOURCE_GROUP_ID is required}
+      - TARGET_GROUP_ID=${TARGET_GROUP_ID:?TARGET_GROUP_ID is required}
+      - SOURCE_ALLOWED_USERS=${SOURCE_ALLOWED_USERS:-}
+
+      # Gemini API
+      - GEMINI_API_KEY=${GEMINI_API_KEY:?GEMINI_API_KEY is required}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-flash}
+
+      # Google Translate (optional)
+      - GOOGLE_TRANSLATE_API_KEY=${GOOGLE_TRANSLATE_API_KEY:-}
+
+      # Database
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-signal_bot}
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - SQLALCHEMY_ECHO=${SQLALCHEMY_ECHO:-False}
+
+      # Redis
+      - REDIS_URL=redis://redis:6379/0
+
+      # Application
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - MAX_RETRIES=${MAX_RETRIES:-3}
+      - TIMEOUT_GEMINI_SEC=${TIMEOUT_GEMINI_SEC:-30}
+      - TIMEOUT_TELEGRAM_SEC=${TIMEOUT_TELEGRAM_SEC:-15}
+
+      # Media
+      - MEDIA_DOWNLOAD_DIR=/tmp/signals
+      - MAX_IMAGE_SIZE_MB=${MAX_IMAGE_SIZE_MB:-50}
+    volumes:
+      # Persistent session files (important!)
+      - ./sessions:/app/sessions
+      # Logs
+      - ./logs:/app/logs
+      # Temporary media storage
+      - signal_media:/tmp/signals
+    ports:
+      - "8000:8000"  # Health check endpoint (if implemented)
+    restart: unless-stopped
+    networks:
+      - signal_bot_network
+    # Interactive mode for first-time authentication
+    # Uncomment for initial setup:
+    # stdin_open: true
+    # tty: true
+
+# ==============================================================================
+# Volumes
+# ==============================================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  signal_media:
+    driver: local
+
+# ==============================================================================
+# Networks
+# ==============================================================================
+networks:
+  signal_bot_network:
+    driver: bridge

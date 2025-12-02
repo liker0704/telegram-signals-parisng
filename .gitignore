@@ -1,0 +1,170 @@
+# ==============================================================================
+# Telegram Signal Translator Bot - Git Ignore Rules
+# ==============================================================================
+
+# ==============================================================================
+# Python
+# ==============================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.python-version
+
+# ==============================================================================
+# IDE / Editor
+# ==============================================================================
+
+# PyCharm
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# ==============================================================================
+# Testing
+# ==============================================================================
+
+# pytest
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ==============================================================================
+# Project Specific
+# ==============================================================================
+
+# Telethon session files (CRITICAL - contain auth tokens!)
+*.session
+*.session-journal
+sessions/
+
+# Environment configuration (contains secrets!)
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Downloaded media (temporary files)
+/tmp/signals/
+media_downloads/
+
+# Logs
+logs/
+*.log
+
+# Database dumps
+*.sql.backup
+*.dump
+
+# ==============================================================================
+# Docker
+# ==============================================================================
+
+# Docker data volumes (if mounted locally)
+postgres_data/
+redis_data/
+
+# ==============================================================================
+# OS Generated
+# ==============================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+
+# ==============================================================================
+# Miscellaneous
+# ==============================================================================
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Secrets and credentials
+*.pem
+*.key
+credentials.json
+service-account.json
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Temporary files
+*.tmp
+*.temp
+.cache/

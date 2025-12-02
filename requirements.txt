@@ -1,0 +1,50 @@
+# ==============================================================================
+# Telegram Signal Translator Bot - Python Dependencies
+# ==============================================================================
+# Install: pip install -r requirements.txt
+# ==============================================================================
+
+# Telegram MTProto Client (user accounts, not bot API)
+telethon==1.36.0
+
+# Google Gemini API for translation and OCR
+google-generativeai==0.8.0
+
+# Async HTTP client for API calls
+aiohttp==3.10.0
+
+# PostgreSQL drivers
+psycopg2-binary==2.9.9      # Sync driver (for migrations)
+asyncpg==0.30.0             # Async driver (for application)
+
+# ORM and database utilities
+sqlalchemy==2.0.23
+
+# Environment configuration
+python-dotenv==1.0.0
+
+# Structured logging
+structlog==24.1.0
+
+# Data validation
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Redis client (optional, for caching)
+redis==5.0.1
+aioredis==2.0.1
+
+# Google Translate fallback (free tier)
+googletrans==4.0.0-rc1
+
+# Utilities
+cryptography==41.0.0        # For Telethon session encryption
+pillow==10.1.0              # Image processing (optional)
+
+# Development dependencies (optional)
+# pytest==7.4.0
+# pytest-asyncio==0.21.1
+# pytest-cov==4.1.0
+# black==23.11.0
+# isort==5.12.0
+# mypy==1.7.0
