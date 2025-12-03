@@ -66,9 +66,9 @@ SL: $90000
         assert result['sl'] == 50000.0
 
     def test_timeframe_minutes(self):
-        text = "#Идея 15мин"
+        text = "#Идея 15M"
         result = parse_trading_signal(text)
-        assert result['timeframe'] == '15мин'
+        assert result['timeframe'] == '15M'
 
     def test_empty_text(self):
         result = parse_trading_signal("")

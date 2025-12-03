@@ -47,24 +47,21 @@ def register_handlers(reader_client) -> None:
         Handle any new message in the source group.
 
         Routes messages to appropriate handler:
-        - If contains #Идея and is NOT a reply -> handle_new_signal
-        - If contains #Идея and IS a reply -> handle_signal_update
+        - If contains #Идея -> handle_new_signal (creates new signal)
+        - If is a reply (to any message) -> handle_signal_update (checks if parent is signal)
         - Otherwise -> ignore
         """
         message = event.message
         text = message.text or ''
 
-        # Skip messages without signal marker
-        if not is_signal(text):
-            return
-
         try:
-            if message.is_reply:
-                # Reply to existing signal
-                asyncio.create_task(handle_signal_update(event))
-            else:
-                # New signal
+            if is_signal(text):
+                # New signal with #Идея marker
                 asyncio.create_task(handle_new_signal(event))
+            elif message.is_reply:
+                # Reply to some message - handler will check if parent is a signal
+                asyncio.create_task(handle_signal_update(event))
+            # else: regular message without #Идея and not a reply - ignore
         except Exception as e:
             logger.error("Error dispatching message handler",
                         message_id=message.id,

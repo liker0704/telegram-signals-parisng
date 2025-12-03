@@ -2,6 +2,10 @@
 # Telegram Signal Translator Bot - Python Dependencies
 # ==============================================================================
 # Install: pip install -r requirements.txt
+#
+# NOTE: For local authentication (auth_local.py), you only need:
+#   pip install telethon python-dotenv
+#
 # ==============================================================================
 
 # Telegram MTProto Client (user accounts, not bot API)

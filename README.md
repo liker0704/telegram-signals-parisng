@@ -156,12 +156,37 @@ docker-compose ps
 
 ### First Time Setup
 
-On first run, you'll need to authenticate both Telegram accounts:
+**IMPORTANT:** You must generate session strings BEFORE running Docker:
 
-1. The app will prompt for phone number verification codes
-2. Check your Telegram apps for the codes
-3. Enter codes in the console
-4. Session files will be saved for future use
+1. **Install dependencies locally** (outside Docker):
+   ```bash
+   pip install telethon python-dotenv
+   ```
+
+2. **Run the authentication script**:
+   ```bash
+   python auth_local.py
+   ```
+
+3. **Follow the prompts**:
+   - Authenticate Reader account (you'll receive a Telegram code)
+   - Authenticate Publisher account (you'll receive another code)
+   - Script will output session strings
+
+4. **Add session strings to .env**:
+   ```ini
+   READER_SESSION_STRING=1BVtsOMGBu7kNWFDM...
+   PUBLISHER_SESSION_STRING=1BVtsOMGBu8kNWFEM...
+   ```
+
+5. **Start Docker containers**:
+   ```bash
+   docker-compose up -d
+   ```
+
+Session strings remain valid indefinitely. No interactive authentication needed in Docker!
+
+For detailed authentication instructions, see [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md)
 
 ### Testing
 

@@ -41,13 +41,13 @@ services:
   redis:
     image: redis:7-alpine
     container_name: signal_bot_redis
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --port ${REDIS_PORT:-6379}
     volumes:
       - redis_data:/data
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:${REDIS_PORT:-6379}"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-p", "${REDIS_PORT:-6379}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -73,13 +73,15 @@ services:
       - READER_API_ID=${READER_API_ID:?READER_API_ID is required}
       - READER_API_HASH=${READER_API_HASH:?READER_API_HASH is required}
       - READER_PHONE=${READER_PHONE:?READER_PHONE is required}
-      - READER_SESSION_FILE=${READER_SESSION_FILE:-reader.session}
+      - READER_SESSION_STRING=${READER_SESSION_STRING:-}
+      - READER_SESSION_FILE=${READER_SESSION_FILE:-sessions/reader.session}
 
       # Telegram Publisher Account
       - PUBLISHER_API_ID=${PUBLISHER_API_ID:?PUBLISHER_API_ID is required}
       - PUBLISHER_API_HASH=${PUBLISHER_API_HASH:?PUBLISHER_API_HASH is required}
       - PUBLISHER_PHONE=${PUBLISHER_PHONE:?PUBLISHER_PHONE is required}
-      - PUBLISHER_SESSION_FILE=${PUBLISHER_SESSION_FILE:-publisher.session}
+      - PUBLISHER_SESSION_STRING=${PUBLISHER_SESSION_STRING:-}
+      - PUBLISHER_SESSION_FILE=${PUBLISHER_SESSION_FILE:-sessions/publisher.session}
 
       # Group IDs
       - SOURCE_GROUP_ID=${SOURCE_GROUP_ID:?SOURCE_GROUP_ID is required}
@@ -102,7 +104,7 @@ services:
       - SQLALCHEMY_ECHO=${SQLALCHEMY_ECHO:-False}
 
       # Redis
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://redis:${REDIS_PORT:-6379}/0
 
       # Application
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
@@ -116,20 +118,21 @@ services:
       - MAX_IMAGE_SIZE_MB=${MAX_IMAGE_SIZE_MB:-50}
     volumes:
       # Persistent session files (important!)
-      - ./sessions:/app/sessions
+      - sessions_data:/app/sessions
       # Logs
-      - ./logs:/app/logs
+      - logs_data:/app/logs
       # Temporary media storage
       - signal_media:/tmp/signals
     ports:
-      - "8000:8000"  # Health check endpoint (if implemented)
+      - "${API_PORT:-8000}:${API_PORT:-8000}"  # Health check endpoint (if implemented)
     restart: unless-stopped
     networks:
       - signal_bot_network
-    # Interactive mode for first-time authentication
-    # Uncomment for initial setup:
-    # stdin_open: true
-    # tty: true
+    # NOTE: For first-time authentication, use the local auth script instead:
+    #   1. Run locally: python auth_local.py
+    #   2. Add generated session strings to .env
+    #   3. Start containers: docker-compose up -d
+    # Interactive mode (stdin_open/tty) is no longer needed with session strings
 
 # ==============================================================================
 # Volumes
@@ -140,6 +143,10 @@ volumes:
   redis_data:
     driver: local
   signal_media:
+    driver: local
+  sessions_data:
+    driver: local
+  logs_data:
     driver: local
 
 # ==============================================================================

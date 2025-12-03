@@ -24,7 +24,11 @@ class Config(BaseSettings):
     READER_PHONE: str = Field(..., description="Phone number for reader account")
     READER_SESSION_FILE: str = Field(
         default="sessions/reader.session",
-        description="Session file path for reader account"
+        description="Session file path for reader account (legacy)"
+    )
+    READER_SESSION_STRING: Optional[str] = Field(
+        default=None,
+        description="Telegram session string (preferred over session file)"
     )
 
     # ============ TELEGRAM PUBLISHER ACCOUNT ============
@@ -33,7 +37,11 @@ class Config(BaseSettings):
     PUBLISHER_PHONE: str = Field(..., description="Phone number for publisher account")
     PUBLISHER_SESSION_FILE: str = Field(
         default="sessions/publisher.session",
-        description="Session file path for publisher account"
+        description="Session file path for publisher account (legacy)"
+    )
+    PUBLISHER_SESSION_STRING: Optional[str] = Field(
+        default=None,
+        description="Telegram session string (preferred over session file)"
     )
 
     # ============ GROUP IDs ============
