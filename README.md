@@ -11,7 +11,7 @@ An asynchronous backend service that reads trading signals from a Russian Telegr
 - **Dual-Account Architecture**: Uses two separate Telegram user accounts (Reader + Publisher) via MTProto Client API
 - **Real-Time Signal Detection**: Automatically detects trading signals tagged with `#Идея` in source group
 - **AI-Powered Translation**: Translates Russian text to English using Google Gemini 2.0 Flash API
-- **Intelligent OCR**: Extracts and translates text from trading chart images using Gemini Vision
+- **Image Text Editing**: Translates Russian text directly on trading chart images using Gemini 2.5 Flash Image model
 - **Message Threading**: Preserves reply chains between source and target groups
 - **Structured Data Extraction**: Parses trading pairs, entry/exit points, TP/SL levels, risk percentage
 - **Fallback Translation**: Automatically falls back to Google Translate if Gemini API fails
@@ -38,7 +38,7 @@ SOURCE_GROUP            translate_text()          TARGET_GROUP
 Events:                  Pipeline:
 - new_message           1. Parse signal (#Идея)
 - message_edited        2. Download media
-- reply detected        3. Gemini: translate + OCR (parallel)
+- reply detected        3. Gemini: translate text + edit image (parallel)
      ↓                  4. Cache translations
 Async queue             5. Publish to target group
 (asyncio.Queue)         6. Store mapping in DB
@@ -63,7 +63,8 @@ telegram-signals-parisng/
 │   │   ├── google.py              # Google Translate fallback
 │   │   └── fallback.py            # Translation with fallback logic
 │   ├── ocr/
-│   │   └── gemini_ocr.py          # Image OCR processing
+│   │   ├── gemini_ocr.py          # Image processing orchestration
+│   │   └── image_editor.py        # Gemini image text editing
 │   ├── media/
 │   │   └── downloader.py          # Media download handler
 │   ├── parsers/
@@ -227,7 +228,8 @@ See [.env.example](.env.example) for complete configuration options including:
 |----------|-------------|---------|
 | `SOURCE_GROUP_ID` | Telegram group to monitor for signals | Required |
 | `TARGET_GROUP_ID` | Telegram group to post translations | Required |
-| `GEMINI_MODEL` | Gemini model (2.0-flash or 1.5-pro) | `gemini-2.0-flash` |
+| `GEMINI_MODEL` | Gemini model for translation | `gemini-2.0-flash` |
+| `GEMINI_IMAGE_MODEL` | Gemini model for image editing | `gemini-2.5-flash-image` |
 | `TIMEOUT_GEMINI_SEC` | Max timeout for Gemini API calls | `30` |
 | `MAX_IMAGE_SIZE_MB` | Maximum image size to process | `50` |
 | `LOG_LEVEL` | Logging verbosity (DEBUG/INFO/WARNING/ERROR) | `INFO` |
@@ -243,14 +245,14 @@ See [.env.example](.env.example) for complete configuration options including:
 ### Translation Pipeline
 
 1. **Text Translation**: Russian text → English via Gemini API
-2. **Image Processing**: Download chart images and run OCR extraction
-3. **Parallel Processing**: Text and OCR run concurrently for speed
-4. **Fallback**: If Gemini fails, falls back to Google Translate
+2. **Image Editing**: Download chart images and edit Russian text to English using Gemini 2.5 Flash Image
+3. **Parallel Processing**: Text translation and image editing run concurrently for speed
+4. **Fallback**: If Gemini fails, falls back to Google Translate; if image editing fails, original image is used
 5. **Preservation**: Trading terms (TP1, SL, LONG, SHORT) remain untranslated
 
 ### Publishing
 
-1. **Formatting**: Combine translated text with OCR results
+1. **Formatting**: Prepare translated text and edited image
 2. **Posting**: Publisher account sends message to `TARGET_GROUP_ID`
 3. **Mapping**: Store source→target message ID mapping in database
 4. **Threading**: Replies to signals are posted as threaded replies
@@ -281,9 +283,9 @@ See [migrations/001_init_schema.sql](migrations/001_init_schema.sql) for complet
 - Parsing + extraction: <200ms
 - Media download: 500ms - 2s
 - Gemini API translation: 3-8s
-- Image OCR: 2-5s (parallel)
+- Image editing: 5-10s (parallel with translation)
 - Posting to target: 500ms - 1s
-- **Total: ~6-12 seconds** ✅
+- **Total: ~6-15 seconds** ✅
 
 ## Monitoring & Logs
 
@@ -299,14 +301,14 @@ The service produces structured JSON logs with:
 - `signals_processed_total`: Count of successful signals
 - `signals_failed_total`: Count of failures
 - `translation_fallback_count`: Gemini→Google Translate fallbacks
-- `image_ocr_success_rate`: OCR extraction success rate
+- `image_edit_success_rate`: Image text editing success rate
 
 ## Error Handling
 
 The service implements robust error handling:
 
 - **Translation Failures**: Falls back to Google Translate, then posts original text
-- **Image OCR Failures**: Posts signal without OCR text
+- **Image Editing Failures**: Posts signal with original (unedited) image
 - **Network Errors**: Retries with exponential backoff (up to 3 attempts)
 - **Database Errors**: Logs error, marks signal as failed, continues operation
 - **Account Disconnects**: Automatic reconnection with backoff
@@ -384,6 +386,69 @@ pytest tests/integration/
 # With coverage
 pytest --cov=src tests/
 ```
+
+### Utility Scripts
+
+The project includes several utility scripts in the `scripts/` directory:
+
+#### Get Group IDs
+
+Find Telegram group IDs for your accounts:
+
+```bash
+# Get group IDs for Reader account
+python scripts/get_group_id.py reader
+
+# Get group IDs for Publisher account
+python scripts/get_group_id.py publisher
+```
+
+This script lists all groups/channels accessible by each account with their IDs. Use these IDs to configure `SOURCE_GROUP_ID` and `TARGET_GROUP_ID`.
+
+#### Verify Target Group Messages
+
+After running integration tests, verify that translated messages appeared correctly in TARGET_GROUP:
+
+```bash
+# Default: fetch last 10 messages from last 60 minutes
+python scripts/verify_target_group.py
+
+# Fetch last 20 messages from last 30 minutes
+python scripts/verify_target_group.py --limit 20 --since 30
+
+# Fetch last 50 messages from last 2 hours
+python scripts/verify_target_group.py --limit 50 --since 120
+```
+
+**Options:**
+- `--limit N` - Number of messages to fetch (default: 10)
+- `--since N` - Only show messages from last N minutes (default: 60)
+
+**Output includes:**
+- Message ID and timestamp (UTC)
+- Message text (truncated to 200 chars)
+- Media presence (Yes/No with type)
+- Reply information (if message is a reply)
+
+This is useful for:
+- Manual verification after integration tests
+- Debugging translation issues
+- Checking message threading/reply chains
+- Verifying media was forwarded correctly
+
+#### Authenticate Locally
+
+Generate session strings for Docker deployment:
+
+```bash
+# Generate session string for Reader account
+python scripts/auth_local.py reader
+
+# Generate session string for Publisher account
+python scripts/auth_local.py publisher
+```
+
+See [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md) for detailed authentication instructions.
 
 ## Security Considerations
 
