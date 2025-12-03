@@ -110,3 +110,38 @@ async def translate_image_ocr(image_path: str) -> Optional[str]:
     except Exception as e:
         logger.error("OCR failed", error=str(e), path=image_path)
         return None
+
+
+async def process_image(image_path: str) -> Optional[str]:
+    """
+    Process image: edit Russian text to English using Gemini Image API.
+
+    This replaces the old OCR-only approach. Now we regenerate the image
+    with translated text instead of just extracting it.
+
+    Args:
+        image_path: Path to the original image
+
+    Returns:
+        Path to edited image with English text, or None if editing failed
+        (caller should use original image as fallback)
+    """
+    from src.ocr.image_editor import edit_image_text
+
+    # Generate output path (add _edited suffix before extension)
+    base, ext = os.path.splitext(image_path)
+    output_path = f"{base}_edited{ext}"
+
+    try:
+        edited_path = await edit_image_text(image_path, output_path)
+        if edited_path:
+            logger.info("Image processed successfully",
+                       original=image_path,
+                       edited=edited_path)
+            return edited_path
+        else:
+            logger.warning("Image editing returned None, will use original")
+            return None
+    except Exception as e:
+        logger.error("Image processing failed", error=str(e), path=image_path)
+        return None

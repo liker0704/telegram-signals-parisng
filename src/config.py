@@ -58,6 +58,10 @@ class Config(BaseSettings):
         default="gemini-2.0-flash",
         description="Gemini model to use for translation and OCR"
     )
+    GEMINI_IMAGE_MODEL: str = Field(
+        default="gemini-2.5-flash-image",
+        description="Gemini model for image text editing"
+    )
 
     # ============ GOOGLE TRANSLATE (Optional) ============
     GOOGLE_TRANSLATE_API_KEY: Optional[str] = Field(

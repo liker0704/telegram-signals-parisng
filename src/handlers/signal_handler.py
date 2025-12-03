@@ -10,7 +10,7 @@ from src.utils.logger import get_logger
 from src.parsers.signal_parser import parse_trading_signal, is_signal
 from src.formatters.message import build_final_message
 from src.translators.fallback import translate_text_with_fallback
-from src.ocr.gemini_ocr import translate_image_ocr
+from src.ocr.gemini_ocr import process_image
 from src.media.downloader import download_and_process_media, cleanup_media
 from src.db.queries import db_insert_signal, db_update_signal
 from src.telethon_setup import get_publisher_client
@@ -39,6 +39,7 @@ async def handle_new_signal(event: NewMessage.Event) -> None:
     message = event.message
     signal_id = None
     media_info = None
+    edited_image_path = None
 
     try:
         # Check if sender is allowed (if configured)
@@ -95,23 +96,23 @@ async def handle_new_signal(event: NewMessage.Event) -> None:
                 'image_local_path': media_info['local_path']
             })
 
-        # Step 5: Translate text + OCR
+        # Step 5: Translate text + Process image
         import asyncio
 
         translation_task = translate_text_with_fallback(message.text or '')
-        ocr_task = (
-            translate_image_ocr(media_info['local_path'])
+        image_edit_task = (
+            process_image(media_info['local_path'])
             if media_info else asyncio.sleep(0)
         )
 
         results = await asyncio.gather(
             translation_task,
-            ocr_task,
+            image_edit_task,
             return_exceptions=True
         )
 
         translated_text = results[0] if not isinstance(results[0], Exception) else message.text
-        image_ocr = results[1] if len(results) > 1 and not isinstance(results[1], Exception) else None
+        edited_image_path = results[1] if len(results) > 1 and not isinstance(results[1], Exception) else None
 
         if isinstance(results[0], Exception):
             logger.error("Translation failed", error=str(results[0]))
@@ -124,17 +125,19 @@ async def handle_new_signal(event: NewMessage.Event) -> None:
         # Step 6: Build final message
         final_message = build_final_message(
             translated_text=translated_text,
-            image_ocr=image_ocr,
             parsed_fields=parsed_fields
         )
 
         # Step 7: Post to target group
         publisher = get_publisher_client()
 
+        # Use edited image if available, otherwise original
+        image_to_send = edited_image_path or (media_info['local_path'] if media_info else None)
+
         posted_msg = await publisher.send_message(
             entity=config.TARGET_GROUP_ID,
             message=final_message,
-            file=media_info['local_path'] if media_info else None
+            file=image_to_send
         )
 
         target_msg_id = posted_msg.id
@@ -147,7 +150,7 @@ async def handle_new_signal(event: NewMessage.Event) -> None:
             'target_chat_id': config.TARGET_GROUP_ID,
             'target_message_id': target_msg_id,
             'translated_text': translated_text,
-            'image_ocr_text': image_ocr,
+            'image_ocr_text': None,  # OCR no longer performed
             'status': 'POSTED',
             'processed_at': datetime.utcnow()
         })
@@ -165,6 +168,8 @@ async def handle_new_signal(event: NewMessage.Event) -> None:
             })
 
     finally:
-        # Step 9: Cleanup media
+        # Step 9: Cleanup media (both original and edited images)
         if media_info:
             cleanup_media(media_info['local_path'])
+        if edited_image_path:
+            cleanup_media(edited_image_path)

@@ -9,10 +9,11 @@
 # ==============================================================================
 
 # Telegram MTProto Client (user accounts, not bot API)
-telethon==1.36.0
+telethon==1.42.0
 
 # Google Gemini API for translation and OCR
 google-generativeai==0.8.0
+google-genai>=1.0.0              # New SDK for Gemini 3 Pro Image
 
 # Async HTTP client for API calls
 aiohttp==3.10.0
