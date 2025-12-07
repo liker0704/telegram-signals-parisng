@@ -46,18 +46,11 @@ class TestBuildFinalMessage:
         result = build_final_message("Translated text")
         assert result == "Translated text"
 
-    def test_with_ocr(self):
-        result = build_final_message("Translated text", "OCR from chart")
-        assert "Translated text" in result
-        assert "Chart OCR" in result
-        assert "OCR from chart" in result
-
-    def test_with_none_ocr(self):
-        result = build_final_message("Translated text", None)
+    def test_with_parsed_fields(self):
+        result = build_final_message("Translated text", parsed_fields={"entry": "50000"})
         assert result == "Translated text"
-        assert "OCR" not in result
 
-    def test_with_empty_ocr(self):
-        result = build_final_message("Translated text", "")
-        # Empty OCR should not add OCR section
-        assert result == "Translated text"
+    def test_returns_translated_text(self):
+        text = "Entry: 50000\nTP1: 52000\nSL: 48000"
+        result = build_final_message(text)
+        assert result == text

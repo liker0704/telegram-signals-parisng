@@ -60,7 +60,7 @@ class Config(BaseSettings):
     )
     GEMINI_IMAGE_MODEL: str = Field(
         default="gemini-2.5-flash-image",
-        description="Gemini model for image text editing"
+        description="Gemini model for image text editing (Nano Banana Pro: gemini-3-pro-image-preview)"
     )
 
     # ============ GOOGLE TRANSLATE (Optional) ============

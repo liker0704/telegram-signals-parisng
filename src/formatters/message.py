@@ -9,7 +9,6 @@ import re
 
 def build_final_message(
     translated_text: str,
-    image_ocr: str | None = None,
     parsed_fields: dict | None = None
 ) -> str:
     """
@@ -17,22 +16,16 @@ def build_final_message(
 
     Args:
         translated_text: Translated signal text
-        image_ocr: OCR text from chart image (optional)
         parsed_fields: Extracted trading fields (optional, not currently used)
 
     Returns:
         Final formatted message string
 
     Example:
-        >>> build_final_message("Entry: 50000", "Chart shows BTC/USDT")
-        'Entry: 50000\\n\\n_Chart OCR:_\\nChart shows BTC/USDT'
+        >>> build_final_message("Entry: 50000")
+        'Entry: 50000'
     """
-    parts = [translated_text]
-
-    if image_ocr:
-        parts.append(f"\n\n_Chart OCR:_\n{image_ocr}")
-
-    return '\n'.join(parts)
+    return translated_text
 
 
 def restore_trading_terms(text: str) -> str:

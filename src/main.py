@@ -41,7 +41,7 @@ def register_handlers(reader_client) -> None:
     - Signal update (reply to existing signal)
     """
 
-    @reader_client.on(events.NewMessage(chats=[config.SOURCE_GROUP_ID]))
+    @reader_client.on(events.NewMessage(chats=[config.SOURCE_GROUP_ID], incoming=True, outgoing=True))
     async def on_new_message(event):
         """
         Handle any new message in the source group.
@@ -50,6 +50,11 @@ def register_handlers(reader_client) -> None:
         - If contains #Идея -> handle_new_signal (creates new signal)
         - If is a reply (to any message) -> handle_signal_update (checks if parent is signal)
         - Otherwise -> ignore
+
+        Note: incoming=True, outgoing=True allows receiving both:
+        - Messages from other users (incoming)
+        - Messages from the reader account itself (outgoing) - useful for testing
+        In production, you may want to set outgoing=False to only process others' messages.
         """
         message = event.message
         text = message.text or ''

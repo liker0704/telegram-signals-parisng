@@ -31,10 +31,14 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install runtime dependencies only
+# Install runtime dependencies + fonts for PIL text rendering + OpenMP for PaddlePaddle
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     postgresql-client \
+    libgl1 \
+    libglib2.0-0 \
+    libgomp1 \
+    fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -42,16 +46,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Create non-root user for security
-RUN groupadd -r signalbot && useradd -r -g signalbot signalbot
+# Create non-root user for security BEFORE downloading models
+RUN groupadd -r signalbot && useradd -r -g signalbot -m signalbot
 
 # Create necessary directories
 RUN mkdir -p /app/src /app/logs /app/sessions /tmp/signals && \
     chown -R signalbot:signalbot /app /tmp/signals
 
+# Pre-download PaddleOCR models as signalbot user (saves startup time)
+USER signalbot
+RUN python -c "from paddleocr import PaddleOCR; PaddleOCR(lang='ru')" || true
+USER root
+
 # Copy application code
 COPY --chown=signalbot:signalbot src/ ./src/
 COPY --chown=signalbot:signalbot migrations/ ./migrations/
+COPY --chown=signalbot:signalbot tests/ ./tests/
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \

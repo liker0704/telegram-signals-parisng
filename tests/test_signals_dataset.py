@@ -122,15 +122,12 @@ class TestMessageFormatterWithDataset:
         assert translated in result
         assert "#Idea" in result or "YBU" in result
 
-    def test_build_message_with_ocr(self):
-        """Test building message with OCR text."""
+    def test_build_message_returns_translated_text(self):
+        """Test that build_final_message returns the translated text as-is."""
         translated = "Trading idea on YBU/USDT"
-        ocr_text = "BYBIT chart showing ROI +8.09%"
+        result = build_final_message(translated)
 
-        result = build_final_message(translated, image_ocr=ocr_text)
-
-        assert translated in result
-        assert ocr_text in result or "Chart" in result
+        assert result == translated
 
     def test_restore_trading_terms(self):
         """Test that trading terms are properly restored."""

@@ -15,6 +15,10 @@ telethon==1.42.0
 google-generativeai==0.8.0
 google-genai>=1.0.0              # New SDK for Gemini 3 Pro Image
 
+# OCR - PaddleOCR for text extraction from images
+paddleocr>=2.7.0
+paddlepaddle>=2.5.2
+
 # Async HTTP client for API calls
 aiohttp==3.10.0
 
@@ -47,9 +51,9 @@ cryptography==41.0.0        # For Telethon session encryption
 pillow==10.1.0              # Image processing (optional)
 
 # Development dependencies (optional)
-# pytest==7.4.0
-# pytest-asyncio==0.21.1
-# pytest-cov==4.1.0
+pytest==7.4.0
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
 # black==23.11.0
 # isort==5.12.0
 # mypy==1.7.0
