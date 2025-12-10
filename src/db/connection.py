@@ -1,5 +1,6 @@
 """Database connection management using asyncpg."""
 
+import asyncio
 import asyncpg
 from typing import Optional
 from contextlib import asynccontextmanager
@@ -11,11 +12,12 @@ logger = get_logger(__name__)
 
 # Global connection pool
 _pool: Optional[asyncpg.Pool] = None
+_init_lock: Optional[asyncio.Lock] = None
 
 
 async def init_db() -> asyncpg.Pool:
     """
-    Initialize the database connection pool.
+    Initialize the database connection pool (thread-safe with async lock).
 
     Returns:
         asyncpg.Pool: The connection pool
@@ -23,28 +25,37 @@ async def init_db() -> asyncpg.Pool:
     Raises:
         Exception: If connection fails
     """
-    global _pool
+    global _pool, _init_lock
+
+    # Initialize lock on first call
+    if _init_lock is None:
+        _init_lock = asyncio.Lock()
 
     if _pool is not None:
         return _pool
 
-    logger.info("Initializing database connection pool",
-                host=config.POSTGRES_HOST,
-                database=config.POSTGRES_DB)
+    async with _init_lock:
+        # Double-check after acquiring lock
+        if _pool is not None:
+            return _pool
 
-    _pool = await asyncpg.create_pool(
-        host=config.POSTGRES_HOST,
-        port=config.POSTGRES_PORT,
-        user=config.POSTGRES_USER,
-        password=config.POSTGRES_PASSWORD,
-        database=config.POSTGRES_DB,
-        min_size=2,
-        max_size=10,
-        command_timeout=60,
-    )
+        logger.info("Initializing database connection pool",
+                    host=config.POSTGRES_HOST,
+                    database=config.POSTGRES_DB)
 
-    logger.info("Database connection pool initialized")
-    return _pool
+        _pool = await asyncpg.create_pool(
+            host=config.POSTGRES_HOST,
+            port=config.POSTGRES_PORT,
+            user=config.POSTGRES_USER,
+            password=config.POSTGRES_PASSWORD,
+            database=config.POSTGRES_DB,
+            min_size=2,
+            max_size=10,
+            command_timeout=60,
+        )
+
+        logger.info("Database connection pool initialized")
+        return _pool
 
 
 async def close_db() -> None:

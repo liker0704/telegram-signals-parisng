@@ -1,12 +1,27 @@
 """Database queries for signals and signal_updates tables."""
 
 from typing import Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.db.connection import fetch, fetchrow, fetchval, execute
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# Whitelist of allowed columns for UPDATE operations
+ALLOWED_SIGNAL_COLUMNS = frozenset({
+    'status', 'pair', 'direction', 'timeframe', 'entry_range',
+    'tp1', 'tp2', 'tp3', 'sl', 'risk_percent', 'target_chat_id',
+    'target_message_id', 'translated_text', 'image_ocr_text',
+    'processed_at', 'error_message', 'image_local_path'
+})
+
+ALLOWED_SIGNAL_UPDATE_COLUMNS = frozenset({
+    'status', 'pair', 'direction', 'timeframe', 'entry_range',
+    'tp1', 'tp2', 'tp3', 'sl', 'risk_percent', 'target_chat_id',
+    'target_message_id', 'translated_text', 'image_ocr_text',
+    'processed_at', 'error_message', 'image_local_path'
+})
 
 
 # =============================================================================
@@ -49,7 +64,7 @@ async def db_insert_signal(signal_data: dict) -> int:
         signal_data.get('source_user_id'),
         signal_data.get('original_text'),
         signal_data.get('status', 'PENDING'),
-        signal_data.get('created_at', datetime.utcnow()),
+        signal_data.get('created_at', datetime.now(timezone.utc)),
         signal_data.get('pair'),
         signal_data.get('direction'),
         signal_data.get('timeframe'),
@@ -76,6 +91,11 @@ async def db_update_signal(signal_id: int, data: dict) -> None:
     """
     if not data:
         return
+
+    # Validate column names against whitelist
+    invalid_keys = set(data.keys()) - ALLOWED_SIGNAL_COLUMNS
+    if invalid_keys:
+        raise ValueError(f"Invalid column names: {invalid_keys}")
 
     # Build dynamic UPDATE query
     set_clauses = []
@@ -156,7 +176,7 @@ async def db_insert_signal_update(update_data: dict) -> int:
         update_data.get('source_user_id'),
         update_data.get('original_text'),
         update_data.get('status', 'PENDING'),
-        update_data.get('created_at', datetime.utcnow()),
+        update_data.get('created_at', datetime.now(timezone.utc)),
     )
 
     logger.info("Inserted signal update", update_id=update_id,
@@ -168,6 +188,11 @@ async def db_update_signal_update(update_id: int, data: dict) -> None:
     """Update a signal_update record."""
     if not data:
         return
+
+    # Validate column names against whitelist
+    invalid_keys = set(data.keys()) - ALLOWED_SIGNAL_UPDATE_COLUMNS
+    if invalid_keys:
+        raise ValueError(f"Invalid column names: {invalid_keys}")
 
     set_clauses = []
     values = []

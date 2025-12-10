@@ -24,6 +24,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 import structlog
 
+from src.utils.security import validate_image_file
+
 logger = structlog.get_logger(__name__)
 
 # Timeout for PaddleOCR operations (seconds)
@@ -580,100 +582,105 @@ class SeamlessTextReplacer:
         Returns:
             Processed PIL Image, or None if failed
         """
+        if not validate_image_file(image_path):
+            logger.error("Invalid or unsafe image path", path=image_path)
+            return None
+
         try:
             # Load image
-            image = Image.open(image_path).convert('RGB')
-            logger.info("Processing image",
-                       path=image_path,
-                       size=image.size,
-                       num_translations=len(translations))
+            with Image.open(image_path) as img:
+                image = img.convert('RGB')
+                logger.info("Processing image",
+                           path=image_path,
+                           size=image.size,
+                           num_translations=len(translations))
 
-            # Detect bounding boxes
-            boxes = self.extract_bounding_boxes(image_path)
+                # Detect bounding boxes
+                boxes = self.extract_bounding_boxes(image_path)
 
-            if not boxes:
-                logger.warning("No text detected in image")
-                # Save original image if output path specified
+                if not boxes:
+                    logger.warning("No text detected in image")
+                    # Save original image if output path specified
+                    if output_path:
+                        image.save(output_path, quality=95)
+                        logger.info("Saved original image (no text detected)", path=output_path)
+                    return image
+
+                # Match to translations
+                matched = self.match_translations(boxes, translations)
+
+                if not matched:
+                    logger.warning("No translations matched to detected text")
+                    # Save original image if output path specified
+                    if output_path:
+                        image.save(output_path, quality=95)
+                        logger.info("Saved original image (no matches)", path=output_path)
+                    return image
+
+                # Process each matched text element
+                result_image = image.copy()
+                processed_regions = []  # Track processed areas to avoid duplicates
+
+                for box_info, translated_text in matched:
+                    original_text = box_info['text']
+                    bbox_rect = box_info['bbox_rect']
+                    x1, y1, x2, y2 = bbox_rect
+
+                    # Skip if this region overlaps with an already processed region
+                    skip = False
+                    for px1, py1, px2, py2 in processed_regions:
+                        # Check for overlap
+                        if not (x2 < px1 or x1 > px2 or y2 < py1 or y1 > py2):
+                            logger.debug("Skipping overlapping region",
+                                       original=original_text,
+                                       bbox=bbox_rect,
+                                       overlaps_with=(px1, py1, px2, py2))
+                            skip = True
+                            break
+
+                    if skip:
+                        continue
+
+                    # Extract colors from ORIGINAL image (not result_image)
+                    text_color = self.extract_text_color(image, bbox_rect)
+                    bg_color = self.extract_background_color(image, bbox_rect)
+
+                    # Estimate and fit font
+                    initial_size = self.estimate_font_size(bbox_rect)
+                    font, final_size = self.fit_text_to_bbox(translated_text, bbox_rect, initial_size)
+
+                    # Clear original text
+                    result_image = self.clear_text_region(result_image, bbox_rect, bg_color)
+
+                    # Render replacement
+                    result_image = self.render_replacement_text(
+                        result_image, translated_text, bbox_rect, text_color, font
+                    )
+
+                    # Mark region as processed
+                    processed_regions.append(bbox_rect)
+
+                    logger.info("Replaced text",
+                               original=original_text,
+                               translated=translated_text,
+                               font_size=final_size,
+                               text_color=text_color,
+                               bg_color=bg_color,
+                               bbox=bbox_rect)
+
+                # Skip edge blending - it can reintroduce artifacts on low-res images
+                # result_image = self.blend_edges(result_image, combined_mask)
+
+                # Save if output path provided
                 if output_path:
-                    image.save(output_path, quality=95)
-                    logger.info("Saved original image (no text detected)", path=output_path)
-                return image
+                    result_image.save(output_path, quality=95)
+                    logger.info("Saved result", path=output_path)
 
-            # Match to translations
-            matched = self.match_translations(boxes, translations)
+                logger.info("Processing complete",
+                           matched=len(matched),
+                           total_detected=len(boxes))
 
-            if not matched:
-                logger.warning("No translations matched to detected text")
-                # Save original image if output path specified
-                if output_path:
-                    image.save(output_path, quality=95)
-                    logger.info("Saved original image (no matches)", path=output_path)
-                return image
-
-            # Process each matched text element
-            result_image = image.copy()
-            processed_regions = []  # Track processed areas to avoid duplicates
-
-            for box_info, translated_text in matched:
-                original_text = box_info['text']
-                bbox_rect = box_info['bbox_rect']
-                x1, y1, x2, y2 = bbox_rect
-
-                # Skip if this region overlaps with an already processed region
-                skip = False
-                for px1, py1, px2, py2 in processed_regions:
-                    # Check for overlap
-                    if not (x2 < px1 or x1 > px2 or y2 < py1 or y1 > py2):
-                        logger.debug("Skipping overlapping region",
-                                   original=original_text,
-                                   bbox=bbox_rect,
-                                   overlaps_with=(px1, py1, px2, py2))
-                        skip = True
-                        break
-
-                if skip:
-                    continue
-
-                # Extract colors from ORIGINAL image (not result_image)
-                text_color = self.extract_text_color(image, bbox_rect)
-                bg_color = self.extract_background_color(image, bbox_rect)
-
-                # Estimate and fit font
-                initial_size = self.estimate_font_size(bbox_rect)
-                font, final_size = self.fit_text_to_bbox(translated_text, bbox_rect, initial_size)
-
-                # Clear original text
-                result_image = self.clear_text_region(result_image, bbox_rect, bg_color)
-
-                # Render replacement
-                result_image = self.render_replacement_text(
-                    result_image, translated_text, bbox_rect, text_color, font
-                )
-
-                # Mark region as processed
-                processed_regions.append(bbox_rect)
-
-                logger.info("Replaced text",
-                           original=original_text,
-                           translated=translated_text,
-                           font_size=final_size,
-                           text_color=text_color,
-                           bg_color=bg_color,
-                           bbox=bbox_rect)
-
-            # Skip edge blending - it can reintroduce artifacts on low-res images
-            # result_image = self.blend_edges(result_image, combined_mask)
-
-            # Save if output path provided
-            if output_path:
-                result_image.save(output_path, quality=95)
-                logger.info("Saved result", path=output_path)
-
-            logger.info("Processing complete",
-                       matched=len(matched),
-                       total_detected=len(boxes))
-
-            return result_image
+                return result_image
 
         except Exception as e:
             logger.error("Image processing failed", error=str(e), path=image_path)
@@ -697,13 +704,23 @@ class SeamlessTextReplacer:
 
 # Module-level instance for convenience
 _replacer_instance: Optional[SeamlessTextReplacer] = None
+_replacer_lock: Optional[object] = None
 
 
 def get_replacer() -> SeamlessTextReplacer:
-    """Get or create the global SeamlessTextReplacer instance."""
-    global _replacer_instance
+    """Get or create the global SeamlessTextReplacer instance (thread-safe)."""
+    import threading
+
+    global _replacer_instance, _replacer_lock
+
+    # Initialize lock on first call
+    if _replacer_lock is None:
+        _replacer_lock = threading.Lock()
+
     if _replacer_instance is None:
-        _replacer_instance = SeamlessTextReplacer()
+        with _replacer_lock:
+            if _replacer_instance is None:
+                _replacer_instance = SeamlessTextReplacer()
     return _replacer_instance
 
 

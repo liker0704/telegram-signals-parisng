@@ -8,6 +8,7 @@ This hybrid approach achieves 95%+ reliability vs <40% with pure Gemini Image.
 
 import asyncio
 import os
+import threading
 from io import BytesIO
 from typing import Optional, List, Dict
 
@@ -17,19 +18,23 @@ from google.genai import types
 
 from src.config import config
 from src.utils.logger import get_logger
+from src.utils.security import validate_image_file
 from src.ocr.seamless_replacer import get_replacer, SeamlessTextReplacer
 
 logger = get_logger(__name__)
 
 # Lazy-loaded client
 _client = None
+_client_lock = threading.Lock()
 
 
 def get_client() -> genai.Client:
-    """Get or create Gemini client instance."""
+    """Get or create Gemini client instance (thread-safe)."""
     global _client
     if _client is None:
-        _client = genai.Client(api_key=config.GEMINI_API_KEY)
+        with _client_lock:
+            if _client is None:
+                _client = genai.Client(api_key=config.GEMINI_API_KEY)
     return _client
 
 
@@ -123,6 +128,10 @@ def edit_image_text_sync(image_path: str, output_path: str) -> Optional[str]:
     Returns:
         Path to edited image, or None if editing failed
     """
+    if not validate_image_file(image_path):
+        logger.error("Invalid or unsafe image path", path=image_path)
+        return None
+
     if not os.path.exists(image_path):
         logger.error("Image file not found", path=image_path)
         return None
@@ -131,39 +140,41 @@ def edit_image_text_sync(image_path: str, output_path: str) -> Optional[str]:
 
     try:
         # Load image for Gemini OCR
-        image = Image.open(image_path)
+        with Image.open(image_path) as img:
+            image = img.convert('RGB')
 
-        # Upscale small images for better Gemini OCR
-        min_dimension = 1024
-        width, height = image.size
-        upscaled_path = image_path  # Use original for PaddleOCR
+            # Upscale small images for better Gemini OCR
+            min_dimension = 1024
+            width, height = image.size
+            upscaled_path = image_path  # Use original for PaddleOCR
 
-        if width < min_dimension or height < min_dimension:
-            scale = max(min_dimension / width, min_dimension / height)
-            new_size = (int(width * scale), int(height * scale))
-            image = image.resize(new_size, Image.Resampling.LANCZOS)
-            logger.info("Upscaled image for OCR", original=(width, height), new=new_size)
+            if width < min_dimension or height < min_dimension:
+                scale = max(min_dimension / width, min_dimension / height)
+                new_size = (int(width * scale), int(height * scale))
+                image = image.resize(new_size, Image.Resampling.LANCZOS)
+                logger.info("Upscaled image for OCR", original=(width, height), new=new_size)
 
-        # Stage 1: Gemini OCR for translation extraction
-        logger.info("Stage 1: Running Gemini OCR for translations")
-        translations_list = extract_text_from_image(image)
+            # Stage 1: Gemini OCR for translation extraction
+            logger.info("Stage 1: Running Gemini OCR for translations")
+            translations_list = extract_text_from_image(image)
 
-        if not translations_list:
-            logger.warning("No translations extracted from image")
-            return None
+            if not translations_list:
+                logger.warning("No translations extracted from image")
+                return None
 
-        # Convert translations list to dict for SeamlessTextReplacer
-        # Format: {russian_text: english_text}
-        translations_dict = {
-            t['russian']: t['english']
-            for t in translations_list
-        }
+            # Convert translations list to dict for SeamlessTextReplacer
+            # Format: {russian_text: english_text}
+            translations_dict = {
+                t['russian']: t['english']
+                for t in translations_list
+            }
 
-        logger.info("Stage 1 complete",
-                   num_translations=len(translations_dict),
-                   translations=list(translations_dict.items())[:5])
+            logger.info("Stage 1 complete",
+                       num_translations=len(translations_dict),
+                       translations=list(translations_dict.items())[:5])
 
         # Stage 2: PaddleOCR + PIL for deterministic text replacement
+        # (outside the with block - uses original image path)
         logger.info("Stage 2: Running PaddleOCR + PIL text replacement")
 
         replacer = get_replacer()

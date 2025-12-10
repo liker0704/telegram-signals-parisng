@@ -11,6 +11,7 @@ An asynchronous service that:
 import asyncio
 import signal
 import sys
+from typing import Set
 
 from telethon import events
 
@@ -30,6 +31,38 @@ from src.parsers.signal_parser import is_signal
 # Initialize logging
 setup_logging(config.LOG_LEVEL, config.ENVIRONMENT)
 logger = get_logger(__name__)
+
+# Global state for graceful shutdown
+_shutdown_event: asyncio.Event = None
+_running_tasks: Set[asyncio.Task] = set()
+
+
+def _task_done_callback(task: asyncio.Task) -> None:
+    """Remove completed task from tracking set and log errors."""
+    _running_tasks.discard(task)
+    if task.cancelled():
+        return
+    exc = task.exception()
+    if exc:
+        logger.error("Background task failed",
+                    task_name=task.get_name(),
+                    error=str(exc),
+                    exc_info=exc)
+
+
+def create_tracked_task(coro, name: str = None) -> asyncio.Task:
+    """Create an asyncio task that is tracked for graceful shutdown."""
+    task = asyncio.create_task(coro, name=name)
+    _running_tasks.add(task)
+    task.add_done_callback(_task_done_callback)
+    return task
+
+
+def _handle_shutdown_signal() -> None:
+    """Handle shutdown signal by setting the shutdown event."""
+    logger.info("Shutdown signal received")
+    if _shutdown_event and not _shutdown_event.is_set():
+        _shutdown_event.set()
 
 
 def register_handlers(reader_client) -> None:
@@ -62,10 +95,10 @@ def register_handlers(reader_client) -> None:
         try:
             if is_signal(text):
                 # New signal with #Идея marker
-                asyncio.create_task(handle_new_signal(event))
+                create_tracked_task(handle_new_signal(event), name=f"signal_{message.id}")
             elif message.is_reply:
                 # Reply to some message - handler will check if parent is a signal
-                asyncio.create_task(handle_signal_update(event))
+                create_tracked_task(handle_signal_update(event), name=f"update_{message.id}")
             # else: regular message without #Идея and not a reply - ignore
         except Exception as e:
             logger.error("Error dispatching message handler",
@@ -107,70 +140,75 @@ async def health_check_loop():
 
 
 async def main():
-    """
-    Main entry point for the bot.
+    """Main entry point with graceful shutdown support."""
+    global _shutdown_event
+    _shutdown_event = asyncio.Event()
 
-    Initialization sequence:
-    1. Setup logging
-    2. Initialize database connection pool
-    3. Initialize Telethon clients (Reader + Publisher)
-    4. Verify group access
-    5. Register event handlers
-    6. Start health check loop
-    7. Run until disconnected
-    """
-    logger.info("Starting Telegram Signal Translator Bot",
-                environment=config.ENVIRONMENT,
-                source_group=config.SOURCE_GROUP_ID,
-                target_group=config.TARGET_GROUP_ID)
+    # Setup signal handlers
+    loop = asyncio.get_event_loop()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, _handle_shutdown_signal)
 
     try:
-        # Step 1: Initialize database
+        # Initialize database
         logger.info("Initializing database connection...")
         await init_db()
 
-        # Step 2: Initialize Telethon clients
+        # Initialize Telegram clients
         logger.info("Initializing Telegram clients...")
         reader, publisher = await init_clients()
 
-        # Step 3: Verify group access
+        # Verify group access
         logger.info("Verifying group access...")
         await verify_group_access(reader, publisher)
 
-        # Step 4: Register handlers
+        # Register event handlers
         register_handlers(reader)
 
-        # Step 5: Start health check
-        asyncio.create_task(health_check_loop())
+        # Start health check
+        create_tracked_task(health_check_loop(), name="health_check")
 
-        logger.info("Bot started successfully. Listening for signals...")
+        logger.info("Bot started, listening for signals...")
 
-        # Keep running until disconnected
-        await reader.run_until_disconnected()
+        # Run until shutdown
+        done, pending = await asyncio.wait(
+            [
+                asyncio.create_task(reader.run_until_disconnected()),
+                asyncio.create_task(_shutdown_event.wait())
+            ],
+            return_when=asyncio.FIRST_COMPLETED
+        )
 
-    except KeyboardInterrupt:
-        logger.info("Shutdown requested by user")
     except Exception as e:
-        logger.error("Fatal error", error=str(e), exc_info=True)
+        logger.error("Fatal error in main", error=str(e))
         raise
     finally:
+        logger.info("Initiating graceful shutdown...")
+
+        # Cancel running tasks
+        for task in list(_running_tasks):
+            task.cancel()
+
+        if _running_tasks:
+            await asyncio.gather(*_running_tasks, return_exceptions=True)
+
         # Cleanup
-        logger.info("Shutting down...")
-        await disconnect_clients()
-        await close_db()
+        try:
+            await disconnect_clients()
+        except Exception as e:
+            logger.warning("Error cleaning up clients", error=str(e))
+
+        try:
+            await close_db()
+        except Exception as e:
+            logger.warning("Error closing database", error=str(e))
+
         logger.info("Shutdown complete")
 
 
-def handle_shutdown(signum, frame):
-    """Handle shutdown signals gracefully."""
-    logger.info("Received shutdown signal", signal=signum)
-    sys.exit(0)
-
-
 if __name__ == "__main__":
-    # Register signal handlers for graceful shutdown
-    signal.signal(signal.SIGINT, handle_shutdown)
-    signal.signal(signal.SIGTERM, handle_shutdown)
-
-    # Run the bot
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        logger.error("Application crashed", error=str(e))
+        sys.exit(1)

@@ -1,12 +1,15 @@
 """Gemini Vision OCR for extracting text from trading chart images."""
 
+import asyncio
 import os
+import threading
 from typing import Optional
 
 import google.generativeai as genai
 
 from src.config import config
 from src.utils.logger import get_logger
+from src.utils.security import validate_image_file
 
 logger = get_logger(__name__)
 
@@ -14,13 +17,16 @@ logger = get_logger(__name__)
 genai.configure(api_key=config.GEMINI_API_KEY)
 
 _model = None
+_model_lock = threading.Lock()
 
 
 def get_model() -> genai.GenerativeModel:
-    """Get or create Gemini Vision model instance."""
+    """Get or create Gemini Vision model instance (thread-safe)."""
     global _model
     if _model is None:
-        _model = genai.GenerativeModel(config.GEMINI_MODEL)
+        with _model_lock:
+            if _model is None:
+                _model = genai.GenerativeModel(config.GEMINI_MODEL)
     return _model
 
 
@@ -40,6 +46,10 @@ def extract_image_text(image_path: str) -> Optional[str]:
         FileNotFoundError: If image file doesn't exist
         Exception: If OCR fails
     """
+    if not validate_image_file(image_path):
+        logger.error("Invalid or unsafe image path", path=image_path)
+        return None
+
     if not os.path.exists(image_path):
         raise FileNotFoundError(f"Image not found: {image_path}")
 
@@ -99,8 +109,6 @@ async def translate_image_ocr(image_path: str) -> Optional[str]:
     Returns:
         str: Extracted text formatted for message, or None
     """
-    import asyncio
-
     try:
         result = await asyncio.to_thread(extract_image_text, image_path)
         return result

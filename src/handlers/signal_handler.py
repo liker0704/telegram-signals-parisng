@@ -1,7 +1,7 @@
 """Handler for new trading signals (#Идея)."""
 
+import asyncio
 from datetime import datetime
-from typing import Optional
 
 from telethon.events import NewMessage
 
@@ -12,7 +12,7 @@ from src.formatters.message import build_final_message
 from src.translators.fallback import translate_text_with_fallback
 from src.ocr.gemini_ocr import process_image
 from src.media.downloader import download_and_process_media, cleanup_media
-from src.db.queries import db_insert_signal, db_update_signal
+from src.db.queries import db_insert_signal, db_update_signal, db_find_signal_by_source_msg
 from src.telethon_setup import get_publisher_client
 
 logger = get_logger(__name__)
@@ -37,6 +37,17 @@ async def handle_new_signal(event: NewMessage.Event) -> None:
         event: Telethon NewMessage event
     """
     message = event.message
+    # Idempotency check - skip if already processed
+    existing_signal = await db_find_signal_by_source_msg(
+        source_chat_id=message.chat_id,
+        source_message_id=message.id
+    )
+    if existing_signal:
+        logger.info("Signal already processed, skipping",
+                   source_msg_id=message.id,
+                   existing_signal_id=existing_signal.get('id'))
+        return
+
     signal_id = None
     media_info = None
     edited_image_path = None
@@ -97,8 +108,6 @@ async def handle_new_signal(event: NewMessage.Event) -> None:
             })
 
         # Step 5: Translate text + Process image
-        import asyncio
-
         translation_task = translate_text_with_fallback(message.text or '')
         image_edit_task = (
             process_image(media_info['local_path'])
@@ -134,10 +143,13 @@ async def handle_new_signal(event: NewMessage.Event) -> None:
         # Use edited image if available, otherwise original
         image_to_send = edited_image_path or (media_info['local_path'] if media_info else None)
 
-        posted_msg = await publisher.send_message(
-            entity=config.TARGET_GROUP_ID,
-            message=final_message,
-            file=image_to_send
+        posted_msg = await asyncio.wait_for(
+            publisher.send_message(
+                entity=config.TARGET_GROUP_ID,
+                message=final_message,
+                file=image_to_send
+            ),
+            timeout=config.TIMEOUT_TELEGRAM_SEC
         )
 
         target_msg_id = posted_msg.id
@@ -168,8 +180,15 @@ async def handle_new_signal(event: NewMessage.Event) -> None:
             })
 
     finally:
-        # Step 9: Cleanup media (both original and edited images)
-        if media_info:
-            cleanup_media(media_info['local_path'])
+        # Step 9: Cleanup media (both original and edited images) with error handling
+        if media_info and media_info.get('local_path'):
+            try:
+                cleanup_media(media_info['local_path'])
+            except Exception as cleanup_err:
+                logger.warning("Failed to cleanup media", error=str(cleanup_err))
+
         if edited_image_path:
-            cleanup_media(edited_image_path)
+            try:
+                cleanup_media(edited_image_path)
+            except Exception as cleanup_err:
+                logger.warning("Failed to cleanup edited image", error=str(cleanup_err))
