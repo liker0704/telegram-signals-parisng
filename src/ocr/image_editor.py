@@ -20,12 +20,19 @@ from src.config import config
 from src.utils.logger import get_logger
 from src.utils.security import validate_image_file
 from src.ocr.seamless_replacer import get_replacer, SeamlessTextReplacer
+from src.vision import FallbackChain, VisionResult, TextExtraction
+from src.vision.factory import VisionProviderFactory
+# Note: PaddleOCREditor imported lazily to avoid circular import
 
 logger = get_logger(__name__)
 
 # Lazy-loaded client
 _client = None
 _client_lock = threading.Lock()
+
+# Lazy-loaded vision chain
+_vision_chain = None
+_vision_chain_lock = threading.Lock()
 
 
 def get_client() -> genai.Client:
@@ -38,9 +45,58 @@ def get_client() -> genai.Client:
     return _client
 
 
+def get_vision_chain() -> Optional[FallbackChain]:
+    """Get or create vision provider chain (thread-safe)."""
+    global _vision_chain
+    if _vision_chain is None:
+        with _vision_chain_lock:
+            if _vision_chain is None:
+                try:
+                    providers = []
+                    # Primary provider
+                    try:
+                        primary_provider = VisionProviderFactory.get_provider(config.VISION_PROVIDER)
+                        if primary_provider.is_available:
+                            providers.append(primary_provider)
+                            logger.info("Primary vision provider loaded", provider=config.VISION_PROVIDER)
+                        else:
+                            logger.warning("Primary vision provider not available", provider=config.VISION_PROVIDER)
+                    except Exception as e:
+                        logger.warning("Failed to get primary vision provider",
+                                     provider=config.VISION_PROVIDER, error=str(e))
+
+                    # Fallback providers
+                    for name in config.vision_fallback_list:
+                        try:
+                            fallback_provider = VisionProviderFactory.get_provider(name)
+                            if fallback_provider.is_available and fallback_provider not in providers:
+                                providers.append(fallback_provider)
+                                logger.info("Fallback vision provider loaded", provider=name)
+                        except Exception as e:
+                            logger.debug("Fallback provider not available", provider=name, error=str(e))
+
+                    if providers:
+                        _vision_chain = FallbackChain(
+                            providers,
+                            timeout_sec=config.VISION_TIMEOUT_SEC,
+                            max_retries=config.VISION_MAX_RETRIES
+                        )
+                        logger.info("Vision chain created",
+                                  num_providers=len(providers),
+                                  providers=[p.name for p in providers])
+                    else:
+                        logger.warning("No vision providers available, vision chain not created")
+                except Exception as e:
+                    logger.error("Failed to create vision chain", error=str(e))
+    return _vision_chain
+
+
 def extract_text_from_image(image: Image.Image) -> List[Dict[str, str]]:
     """
-    Stage 1: OCR - Extract all text from image using Gemini.
+    Stage 1: OCR - Extract all text from image using vision chain with fallback.
+
+    Tries the new vision provider chain first (with multi-provider fallback),
+    then falls back to direct Gemini OCR if vision chain fails.
 
     Args:
         image: PIL Image object
@@ -48,6 +104,40 @@ def extract_text_from_image(image: Image.Image) -> List[Dict[str, str]]:
     Returns:
         List of dicts with 'russian' and 'english' keys
     """
+    # Try new vision chain first
+    chain = get_vision_chain()
+    if chain:
+        try:
+            logger.info("Attempting text extraction with vision chain")
+            # Run async vision chain extraction
+            result = asyncio.run(chain.extract_text(image))
+
+            if result and result.extractions:
+                # Convert VisionResult extractions to expected format
+                translations = [
+                    {"russian": extraction.original, "english": extraction.translated}
+                    for extraction in result.extractions
+                    if extraction.original and extraction.translated
+                ]
+
+                if translations:
+                    logger.info("Vision chain extraction successful",
+                              count=len(translations),
+                              provider=result.provider_used,
+                              translations=[f"{t['russian']} -> {t['english']}" for t in translations[:5]])
+                    return translations
+                else:
+                    logger.warning("Vision chain returned empty extractions")
+            else:
+                logger.warning("Vision chain returned no result or extractions")
+        except Exception as e:
+            logger.warning("Vision chain extraction failed, falling back to direct Gemini",
+                         error=str(e), error_type=type(e).__name__)
+    else:
+        logger.info("Vision chain not available, using direct Gemini fallback")
+
+    # Fallback to existing direct Gemini OCR code
+    logger.info("Using direct Gemini OCR fallback")
     client = get_client()
 
     ocr_prompt = '''Analyze this trading signal image carefully.
@@ -84,7 +174,7 @@ List ALL text found:'''
         )
 
         ocr_result = response.text if response.text else ""
-        logger.info("OCR completed", text_length=len(ocr_result), raw_result=ocr_result[:1000])
+        logger.info("Direct Gemini OCR completed", text_length=len(ocr_result), raw_result=ocr_result[:1000])
 
         # Parse the OCR result into translations list
         translations = []
@@ -103,12 +193,12 @@ List ALL text found:'''
                 except Exception:
                     continue
 
-        logger.info("Parsed translations", count=len(translations),
+        logger.info("Parsed translations from direct Gemini", count=len(translations),
                    translations=[f"{t['russian']} -> {t['english']}" for t in translations])
         return translations
 
     except Exception as e:
-        logger.error("OCR extraction failed", error=str(e))
+        logger.error("Direct Gemini OCR extraction failed", error=str(e))
         return []
 
 

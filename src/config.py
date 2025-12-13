@@ -63,6 +63,58 @@ class Config(BaseSettings):
         description="Gemini model for image text editing (Nano Banana Pro: gemini-3-pro-image-preview)"
     )
 
+    # ============ OPENAI API (Optional) ============
+    OPENAI_API_KEY: Optional[str] = Field(
+        default=None,
+        description="OpenAI API key (optional, for vision OCR)"
+    )
+    OPENAI_VISION_MODEL: str = Field(
+        default="gpt-4o",
+        description="OpenAI model to use for vision OCR"
+    )
+
+    # ============ ANTHROPIC API (Optional) ============
+    ANTHROPIC_API_KEY: Optional[str] = Field(
+        default=None,
+        description="Anthropic API key (optional, for vision OCR)"
+    )
+    ANTHROPIC_VISION_MODEL: str = Field(
+        default="claude-sonnet-4-20250514",
+        description="Anthropic Claude model to use for vision OCR"
+    )
+
+    # ============ VISION PROVIDERS ============
+    VISION_PROVIDER: str = Field(
+        default="gemini",
+        description="Primary vision provider for OCR (gemini, openai, anthropic)"
+    )
+    VISION_FALLBACK_PROVIDERS: Optional[str] = Field(
+        default="openai,anthropic",
+        description="Comma-separated fallback providers for OCR"
+    )
+    VISION_TIMEOUT_SEC: int = Field(
+        default=30,
+        description="Timeout for vision API requests in seconds"
+    )
+    VISION_MAX_RETRIES: int = Field(
+        default=1,
+        description="Max retries per provider before fallback"
+    )
+
+    # ============ IMAGE EDITING ============
+    IMAGE_EDITOR: str = Field(
+        default="openai",
+        description="Image editor for text replacement (paddleocr, gemini, openai)"
+    )
+    IMAGE_EDITOR_FALLBACK: Optional[str] = Field(
+        default="gemini",
+        description="Fallback image editor if primary fails"
+    )
+    OPENAI_IMAGE_MODEL: str = Field(
+        default="gpt-image-1",
+        description="OpenAI model for image editing"
+    )
+
     # ============ GOOGLE TRANSLATE (Optional) ============
     GOOGLE_TRANSLATE_API_KEY: Optional[str] = Field(
         default=None,
@@ -162,6 +214,24 @@ class Config(BaseSettings):
             )
         return v_lower
 
+    @field_validator("VISION_PROVIDER")
+    @classmethod
+    def validate_vision_provider(cls, v: str) -> str:
+        """Validate vision provider is one of the allowed values."""
+        allowed = {"gemini", "openai", "anthropic"}
+        if v.lower() not in allowed:
+            raise ValueError(f"VISION_PROVIDER must be one of {allowed}, got {v}")
+        return v.lower()
+
+    @field_validator("IMAGE_EDITOR")
+    @classmethod
+    def validate_image_editor(cls, v: str) -> str:
+        """Validate image editor is one of the allowed values."""
+        allowed = {"paddleocr", "gemini", "openai"}
+        if v.lower() not in allowed:
+            raise ValueError(f"IMAGE_EDITOR must be one of {allowed}, got {v}")
+        return v.lower()
+
     # ============ HELPER PROPERTIES ============
 
     @property
@@ -215,6 +285,18 @@ class Config(BaseSettings):
                 f"Invalid SOURCE_ALLOWED_USERS format. "
                 f"Expected comma-separated integers, got: {self.SOURCE_ALLOWED_USERS}"
             ) from e
+
+    @property
+    def vision_fallback_list(self) -> List[str]:
+        """
+        Parse VISION_FALLBACK_PROVIDERS into list.
+
+        Returns:
+            List of fallback provider names, or empty list if None/empty.
+        """
+        if not self.VISION_FALLBACK_PROVIDERS:
+            return []
+        return [p.strip().lower() for p in self.VISION_FALLBACK_PROVIDERS.split(",") if p.strip()]
 
 
 # ============ SINGLETON INSTANCE ============
