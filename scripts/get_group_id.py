@@ -106,15 +106,17 @@ async def list_groups(account_type: str, search: str = None):
 
 def main():
     parser = argparse.ArgumentParser(description='List Telegram groups and their IDs')
-    parser.add_argument('account', nargs='?', default='reader',
-                        choices=['reader', 'publisher', 'r', 'p'],
-                        help='Account to use (default: reader)')
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('-reader', '--reader', action='store_true',
+                       help='Use reader account (default)')
+    group.add_argument('-publisher', '--publisher', action='store_true',
+                       help='Use publisher account')
     parser.add_argument('--search', '-s', metavar='NAME',
                         help='Filter groups by name')
 
     args = parser.parse_args()
 
-    account = 'publisher' if args.account in ('publisher', 'p') else 'reader'
+    account = 'publisher' if args.publisher else 'reader'
 
     asyncio.run(list_groups(account, args.search))
 
