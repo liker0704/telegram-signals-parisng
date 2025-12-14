@@ -72,6 +72,14 @@ class Config(BaseSettings):
         default="gpt-4o",
         description="OpenAI model to use for vision OCR"
     )
+    OPENAI_TRANSLATE_MODEL: str = Field(
+        default="gpt-4o-mini",
+        description="OpenAI model to use for text translation"
+    )
+    OPENAI_TRANSLATE_MAX_TOKENS: int = Field(
+        default=2000,
+        description="Max tokens for translation response"
+    )
 
     # ============ ANTHROPIC API (Optional) ============
     ANTHROPIC_API_KEY: Optional[str] = Field(

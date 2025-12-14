@@ -2,25 +2,30 @@
 
 import asyncio
 import hashlib
+import threading
 from typing import Optional
 
 from src.config import config
 from src.utils.logger import get_logger
-from src.translators.gemini import gemini_translate
+from src.translators.openai import openai_translate
 from src.translators.google import google_translate
 
 logger = get_logger(__name__)
 
-# Rate limiting for Gemini API calls
+# Rate limiting for OpenAI API calls
 _translation_semaphore: asyncio.Semaphore = None
+_semaphore_lock = threading.Lock()
 MAX_CONCURRENT_TRANSLATIONS = 5
 
 
 def _get_semaphore() -> asyncio.Semaphore:
-    """Get or create the global semaphore for rate limiting."""
+    """Get or create the global semaphore for rate limiting (thread-safe)."""
     global _translation_semaphore
     if _translation_semaphore is None:
-        _translation_semaphore = asyncio.Semaphore(MAX_CONCURRENT_TRANSLATIONS)
+        with _semaphore_lock:
+            # Double-checked locking pattern to prevent race condition
+            if _translation_semaphore is None:
+                _translation_semaphore = asyncio.Semaphore(MAX_CONCURRENT_TRANSLATIONS)
     return _translation_semaphore
 
 
@@ -35,11 +40,11 @@ async def translate_text_with_fallback(
     use_cache: bool = True
 ) -> str:
     """
-    Translate text using Gemini with fallback to Google Translate.
+    Translate text using OpenAI with fallback to Google Translate.
 
     Strategy:
     1. Check cache for existing translation (optional)
-    2. Try Gemini with timeout (rate limited)
+    2. Try OpenAI with timeout (rate limited)
     3. On timeout/error -> fallback to Google Translate
     4. If both fail -> return original text
     5. Cache successful translation (optional)
@@ -75,21 +80,21 @@ async def translate_text_with_fallback(
         translated = None
         model_used = None
 
-        # Step 2: Try Gemini with timeout (run sync in thread)
+        # Step 2: Try OpenAI with timeout (run sync in thread)
         try:
-            logger.debug("Attempting Gemini translation", timeout=timeout)
+            logger.debug("Attempting OpenAI translation", timeout=timeout)
             translated = await asyncio.wait_for(
-                asyncio.to_thread(gemini_translate, text),
+                asyncio.to_thread(openai_translate, text),
                 timeout=timeout
             )
-            model_used = "gemini"
-            logger.info("Gemini translation successful")
+            model_used = "openai"
+            logger.info("OpenAI translation successful")
 
         except asyncio.TimeoutError:
-            logger.warning("Gemini timeout, falling back to Google Translate",
+            logger.warning("OpenAI timeout, falling back to Google Translate",
                            timeout=timeout)
         except Exception as e:
-            logger.warning("Gemini error, falling back to Google Translate",
+            logger.warning("OpenAI error, falling back to Google Translate",
                            error=str(e))
 
         # Step 3: Fallback to Google Translate

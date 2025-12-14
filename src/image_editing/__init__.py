@@ -1,7 +1,8 @@
 """Image editing module with multiple backends."""
 from src.image_editing.base import EditResult, ImageEditor
+from src.image_editing.factory import ImageEditorFactory
 
-__all__ = ["ImageEditor", "EditResult"]
+__all__ = ["ImageEditor", "EditResult", "ImageEditorFactory"]
 
 # Conditional imports for editors - catch all exceptions, not just ImportError
 try:
