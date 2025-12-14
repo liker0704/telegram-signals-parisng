@@ -10,7 +10,7 @@ It supports:
 """
 
 import threading
-from typing import Dict, Optional, Type
+from typing import Dict, Type
 
 from src.config import config
 from src.utils.logger import get_logger

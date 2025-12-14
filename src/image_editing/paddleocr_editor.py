@@ -5,11 +5,9 @@ This editor wraps the existing SeamlessTextReplacer that uses
 PaddleOCR for text detection and PIL/OpenCV for replacement.
 """
 
-import asyncio
 from typing import Dict, Optional
 
 import structlog
-from PIL import Image
 
 from src.image_editing.base import ImageEditor, EditResult
 from src.ocr.seamless_replacer import get_replacer

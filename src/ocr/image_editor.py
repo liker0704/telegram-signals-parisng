@@ -9,20 +9,17 @@ This hybrid approach achieves 95%+ reliability vs <40% with pure Gemini Image.
 import asyncio
 import os
 import threading
-from io import BytesIO
-from typing import Optional, List, Dict
+from typing import Dict, List, Optional
 
 from PIL import Image
 from google import genai
-from google.genai import types
 
 from src.config import config
+from src.ocr.seamless_replacer import get_replacer
 from src.utils.logger import get_logger
 from src.utils.security import validate_image_file
-from src.ocr.seamless_replacer import get_replacer, SeamlessTextReplacer
-from src.vision import FallbackChain, VisionResult, TextExtraction
+from src.vision import FallbackChain
 from src.vision.factory import VisionProviderFactory
-# Note: PaddleOCREditor imported lazily to avoid circular import
 
 logger = get_logger(__name__)
 
@@ -236,7 +233,6 @@ def edit_image_text_sync(image_path: str, output_path: str) -> Optional[str]:
             # Upscale small images for better Gemini OCR
             min_dimension = 1024
             width, height = image.size
-            upscaled_path = image_path  # Use original for PaddleOCR
 
             if width < min_dimension or height < min_dimension:
                 scale = max(min_dimension / width, min_dimension / height)

@@ -4,7 +4,6 @@ Parse trading signals to extract structured fields using regex.
 """
 
 import re
-from typing import Optional
 
 
 def is_signal(text: str) -> bool:

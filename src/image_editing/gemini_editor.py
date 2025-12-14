@@ -6,7 +6,6 @@ to perform AI-powered image text editing by translating Russian to English.
 """
 
 import asyncio
-from pathlib import Path
 from typing import Dict, Optional
 
 import structlog

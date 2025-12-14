@@ -5,7 +5,6 @@ from typing import Optional
 from googletrans import Translator
 
 from src.utils.logger import get_logger
-from src.formatters.message import restore_trading_terms
 
 logger = get_logger(__name__)
 

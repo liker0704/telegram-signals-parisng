@@ -7,7 +7,7 @@ from telethon.events import NewMessage
 
 from src.config import config
 from src.utils.logger import get_logger
-from src.parsers.signal_parser import parse_trading_signal, is_signal
+from src.parsers.signal_parser import parse_trading_signal
 from src.formatters.message import build_final_message
 from src.translators.fallback import translate_text_with_fallback
 from src.ocr.gemini_ocr import process_image

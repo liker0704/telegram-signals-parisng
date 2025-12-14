@@ -11,7 +11,6 @@ from typing import Dict, Optional
 
 import structlog
 from PIL import Image
-import numpy as np
 
 from src.image_editing.base import ImageEditor, EditResult
 from src.utils.security import validate_image_file

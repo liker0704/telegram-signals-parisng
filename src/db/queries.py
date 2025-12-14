@@ -1,9 +1,9 @@
 """Database queries for signals and signal_updates tables."""
 
-from typing import Optional, Any
 from datetime import datetime, timezone
+from typing import Optional
 
-from src.db.connection import fetch, fetchrow, fetchval, execute
+from src.db.connection import fetchrow, fetchval, execute
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
