@@ -30,7 +30,7 @@ aiohttp==3.10.0
 
 # PostgreSQL drivers
 psycopg2-binary==2.9.9      # Sync driver (for migrations)
-asyncpg==0.30.0             # Async driver (for application)
+asyncpg==0.31.0             # Async driver (for application)
 
 # ORM and database utilities
 sqlalchemy==2.0.23
