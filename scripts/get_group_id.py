@@ -3,96 +3,121 @@ Script to find Telegram group IDs.
 Run this to list all your groups/chats and their IDs.
 
 Usage:
-    1. Create .env file with API credentials
-    2. Run: python scripts/get_group_id.py [reader|publisher]
-
-    Examples:
-        python scripts/get_group_id.py reader     # List groups for Reader account
-        python scripts/get_group_id.py publisher  # List groups for Publisher account
-        python scripts/get_group_id.py            # Default: reader
+    python scripts/get_group_id.py                # Use reader session
+    python scripts/get_group_id.py publisher      # Use publisher session
+    python scripts/get_group_id.py --search NAME  # Search by name
 """
 
+import argparse
 import asyncio
+import os
 import sys
 from pathlib import Path
 
-# Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from dotenv import load_dotenv
 from telethon import TelegramClient
+from telethon.sessions import StringSession
 
-# Load .env file
 load_dotenv()
 
-import os
+
+class Colors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
 
 
-def get_credentials(account_type: str) -> tuple:
-    """Get API credentials based on account type."""
+def get_client(account_type: str) -> TelegramClient:
+    """Get Telegram client for account type."""
     if account_type == "publisher":
-        return (
-            os.getenv("PUBLISHER_API_ID"),
-            os.getenv("PUBLISHER_API_HASH"),
-            os.getenv("PUBLISHER_PHONE"),
-            "PUBLISHER"
-        )
+        session = os.getenv("PUBLISHER_SESSION_STRING")
+        api_id = os.getenv("PUBLISHER_API_ID")
+        api_hash = os.getenv("PUBLISHER_API_HASH")
+        phone = os.getenv("PUBLISHER_PHONE")
     else:
-        return (
-            os.getenv("READER_API_ID"),
-            os.getenv("READER_API_HASH"),
-            os.getenv("READER_PHONE"),
-            "READER"
-        )
+        session = os.getenv("READER_SESSION_STRING")
+        api_id = os.getenv("READER_API_ID")
+        api_hash = os.getenv("READER_API_HASH")
+        phone = os.getenv("READER_PHONE")
+
+    if not api_id or not api_hash:
+        print(f"{Colors.FAIL}Missing API credentials for {account_type} in .env{Colors.ENDC}")
+        sys.exit(1)
+
+    # Use session string if available, otherwise use phone auth
+    if session:
+        return TelegramClient(StringSession(session), int(api_id), api_hash), None
+    else:
+        return TelegramClient(f"session_{account_type}", int(api_id), api_hash), phone
 
 
-async def main():
-    # Parse command line argument
-    account_type = "reader"
-    if len(sys.argv) > 1:
-        arg = sys.argv[1].lower()
-        if arg in ("publisher", "pub", "p"):
-            account_type = "publisher"
-        elif arg in ("reader", "read", "r"):
-            account_type = "reader"
-        else:
-            print(f"Unknown account type: {arg}")
-            print("Use: reader or publisher")
-            return
+async def list_groups(account_type: str, search: str = None):
+    """List all groups/channels."""
+    client, phone = get_client(account_type)
 
-    api_id, api_hash, phone, prefix = get_credentials(account_type)
+    if phone:
+        print(f"{Colors.WARNING}No session string found, using phone auth...{Colors.ENDC}")
+        await client.start(phone=phone)
+    else:
+        await client.start()
 
-    if not all([api_id, api_hash, phone]):
-        print(f"Missing configuration for {account_type.upper()} in .env file!")
-        print("Required variables:")
-        print(f"  {prefix}_API_ID=your_api_id")
-        print(f"  {prefix}_API_HASH=your_api_hash")
-        print(f"  {prefix}_PHONE=+your_phone")
-        print()
-        print("Make sure .env file exists in the project root.")
-        return
+    print(f"\n{Colors.HEADER}{Colors.BOLD}{'='*70}{Colors.ENDC}")
+    print(f"{Colors.HEADER}{Colors.BOLD}{'Groups/Channels for ' + account_type.upper():^70}{Colors.ENDC}")
+    print(f"{Colors.HEADER}{Colors.BOLD}{'='*70}{Colors.ENDC}\n")
 
-    session_name = f"session_finder_{account_type}"
-    client = TelegramClient(session_name, int(api_id), api_hash)
-    await client.start(phone=phone)
-
-    print(f"\n=== Groups and Channels for {account_type.upper()} account ===\n")
-
+    count = 0
     async for dialog in client.iter_dialogs():
         if dialog.is_group or dialog.is_channel:
+            # Apply search filter if provided
+            if search and search.lower() not in dialog.name.lower():
+                continue
+
+            entity = dialog.entity
+            # Supergroups/channels need -100 prefix
+            if hasattr(entity, 'megagroup') or hasattr(entity, 'broadcast'):
+                full_id = f"-100{entity.id}"
+            else:
+                full_id = f"-{entity.id}"
+
             group_type = "Channel" if dialog.is_channel else "Group"
-            print(f"{group_type}: {dialog.name}")
-            print(f"  ID: {dialog.id}")
+            type_color = Colors.OKBLUE if dialog.is_channel else Colors.OKCYAN
+
+            print(f"{type_color}{Colors.BOLD}{group_type}:{Colors.ENDC} {dialog.name}")
+            print(f"  {Colors.OKGREEN}ID: {full_id}{Colors.ENDC}")
             print()
+            count += 1
+
+    print(f"{Colors.BOLD}Total: {count} groups/channels{Colors.ENDC}")
 
     await client.disconnect()
 
-    # Clean up session file
-    session_file = Path(f"{session_name}.session")
+    # Clean up temp session if created
+    session_file = Path(f"session_{account_type}.session")
     if session_file.exists():
         session_file.unlink()
-        print("(Temporary session file cleaned up)")
+
+
+def main():
+    parser = argparse.ArgumentParser(description='List Telegram groups and their IDs')
+    parser.add_argument('account', nargs='?', default='reader',
+                        choices=['reader', 'publisher', 'r', 'p'],
+                        help='Account to use (default: reader)')
+    parser.add_argument('--search', '-s', metavar='NAME',
+                        help='Filter groups by name')
+
+    args = parser.parse_args()
+
+    account = 'publisher' if args.account in ('publisher', 'p') else 'reader'
+
+    asyncio.run(list_groups(account, args.search))
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
