@@ -3,20 +3,31 @@
 Local Authentication Script for Telegram Signal Translator Bot
 
 This script must be run LOCALLY (not in Docker) to generate session strings
-for both Reader and Publisher accounts.
+for Reader and/or Publisher accounts.
 
 Usage:
-    1. Ensure you have installed dependencies: pip install telethon python-dotenv
-    2. Run this script: python auth_local.py
-    3. Follow the prompts to authenticate both accounts
-    4. Copy the generated session strings to your .env file
-    5. Run the bot in Docker with the session strings
+    # Authenticate both accounts (default)
+    python auth_local.py
+
+    # Authenticate only reader
+    python auth_local.py --reader
+
+    # Authenticate only publisher
+    python auth_local.py --publisher
+
+    # Get user IDs by username (requires existing session)
+    python auth_local.py --get-users @username1 @username2
+
+    # Get group ID by name (requires existing session)
+    python auth_local.py --get-group "Group Name"
 
 This is a ONE-TIME setup. Session strings remain valid until you explicitly
 logout or revoke the session in Telegram settings.
 """
 
+import argparse
 import asyncio
+import os
 import sys
 from pathlib import Path
 
@@ -29,10 +40,9 @@ except ImportError:
     print("Please run: pip install telethon python-dotenv")
     sys.exit(1)
 
-import os
-
 # Load environment variables
 load_dotenv()
+
 
 # Colors for terminal output
 class Colors:
@@ -86,9 +96,6 @@ async def authenticate_account(account_name: str, api_id: int, api_hash: str, ph
 
     Returns:
         StringSession string that can be stored in environment variables
-
-    Raises:
-        Exception: If authentication fails
     """
     print_header(f"Authenticating {account_name} Account")
 
@@ -116,33 +123,105 @@ async def authenticate_account(account_name: str, api_id: int, api_hash: str, ph
     return session_string
 
 
-async def main():
+async def get_user_ids(usernames: list[str]):
+    """Get user IDs for given usernames using existing session."""
+    print_header("Getting User IDs")
+
+    # Try publisher session first, then reader
+    session_string = os.getenv('PUBLISHER_SESSION_STRING') or os.getenv('READER_SESSION_STRING')
+    api_id = int(os.getenv('PUBLISHER_API_ID') or os.getenv('READER_API_ID'))
+    api_hash = os.getenv('PUBLISHER_API_HASH') or os.getenv('READER_API_HASH')
+
+    if not session_string:
+        print_error("No session string found. Run authentication first.")
+        sys.exit(1)
+
+    client = TelegramClient(StringSession(session_string), api_id, api_hash)
+    await client.start()
+
+    print_info("Connected to Telegram\n")
+
+    results = []
+    for username in usernames:
+        # Remove @ if present
+        username = username.lstrip('@')
+        try:
+            user = await client.get_entity(username)
+            print_success(f"@{username}: {user.id}")
+            results.append((username, user.id))
+        except Exception as e:
+            print_error(f"@{username}: Not found - {e}")
+
+    await client.disconnect()
+
+    if results:
+        print(f"\n{Colors.BOLD}For .env (SOURCE_ALLOWED_USERS):{Colors.ENDC}")
+        user_ids = ','.join(str(uid) for _, uid in results)
+        print(f"SOURCE_ALLOWED_USERS={user_ids}")
+
+    return results
+
+
+async def get_group_id(group_name: str):
+    """Get group ID by name using existing session."""
+    print_header("Getting Group ID")
+
+    # Try publisher session first, then reader
+    session_string = os.getenv('PUBLISHER_SESSION_STRING') or os.getenv('READER_SESSION_STRING')
+    api_id = int(os.getenv('PUBLISHER_API_ID') or os.getenv('READER_API_ID'))
+    api_hash = os.getenv('PUBLISHER_API_HASH') or os.getenv('READER_API_HASH')
+
+    if not session_string:
+        print_error("No session string found. Run authentication first.")
+        sys.exit(1)
+
+    client = TelegramClient(StringSession(session_string), api_id, api_hash)
+    await client.start()
+
+    print_info(f"Searching for group: {group_name}\n")
+
+    # Get all dialogs and search for the group
+    found = False
+    async for dialog in client.iter_dialogs():
+        if group_name.lower() in dialog.name.lower():
+            entity = dialog.entity
+            # For supergroups/channels, we need the full ID with -100 prefix
+            if hasattr(entity, 'megagroup') or hasattr(entity, 'broadcast'):
+                group_id = f"-100{entity.id}"
+            else:
+                group_id = f"-{entity.id}"
+
+            print_success(f"Found: {dialog.name}")
+            print_info(f"  ID: {group_id}")
+            print_info(f"  Type: {'Channel' if hasattr(entity, 'broadcast') and entity.broadcast else 'Group'}")
+
+            print(f"\n{Colors.BOLD}For .env:{Colors.ENDC}")
+            print(f"TARGET_GROUP_ID={group_id}")
+            found = True
+
+    if not found:
+        print_error(f"Group '{group_name}' not found")
+        print_info("Make sure you are a member of this group")
+
+    await client.disconnect()
+
+
+async def main_auth(auth_reader: bool, auth_publisher: bool):
     """Main authentication flow."""
 
     print_header("Telegram Signal Translator Bot - Local Authentication")
 
-    print("""
-This script will authenticate both Telegram accounts and generate session strings.
-
-REQUIREMENTS:
-  • Two separate Telegram accounts (Reader and Publisher)
-  • API credentials from https://my.telegram.org/apps
-  • Access to both phone numbers to receive verification codes
-  • .env file with API credentials configured
-
-IMPORTANT:
-  • This script must run LOCALLY, not inside Docker
-  • Keep generated session strings secure (they grant account access)
-  • Session strings remain valid until you logout or revoke access
-""")
-
-    input(f"{Colors.BOLD}Press ENTER to continue...{Colors.ENDC}")
+    if not auth_reader and not auth_publisher:
+        # Default: authenticate both
+        auth_reader = True
+        auth_publisher = True
 
     # Validate environment variables
-    required_vars = [
-        'READER_API_ID', 'READER_API_HASH', 'READER_PHONE',
-        'PUBLISHER_API_ID', 'PUBLISHER_API_HASH', 'PUBLISHER_PHONE'
-    ]
+    required_vars = []
+    if auth_reader:
+        required_vars.extend(['READER_API_ID', 'READER_API_HASH', 'READER_PHONE'])
+    if auth_publisher:
+        required_vars.extend(['PUBLISHER_API_ID', 'PUBLISHER_API_HASH', 'PUBLISHER_PHONE'])
 
     missing_vars = [var for var in required_vars if not os.getenv(var)]
 
@@ -154,32 +233,35 @@ IMPORTANT:
         sys.exit(1)
 
     try:
-        # Get credentials from environment
-        reader_api_id = int(os.getenv('READER_API_ID'))
-        reader_api_hash = os.getenv('READER_API_HASH')
-        reader_phone = os.getenv('READER_PHONE')
-
-        publisher_api_id = int(os.getenv('PUBLISHER_API_ID'))
-        publisher_api_hash = os.getenv('PUBLISHER_API_HASH')
-        publisher_phone = os.getenv('PUBLISHER_PHONE')
+        reader_session = None
+        publisher_session = None
 
         # Authenticate Reader account
-        reader_session = await authenticate_account(
-            "Reader",
-            reader_api_id,
-            reader_api_hash,
-            reader_phone
-        )
+        if auth_reader:
+            reader_api_id = int(os.getenv('READER_API_ID'))
+            reader_api_hash = os.getenv('READER_API_HASH')
+            reader_phone = os.getenv('READER_PHONE')
 
-        print("\n" + "="*70 + "\n")
+            reader_session = await authenticate_account(
+                "Reader",
+                reader_api_id,
+                reader_api_hash,
+                reader_phone
+            )
+            print("\n" + "="*70 + "\n")
 
         # Authenticate Publisher account
-        publisher_session = await authenticate_account(
-            "Publisher",
-            publisher_api_id,
-            publisher_api_hash,
-            publisher_phone
-        )
+        if auth_publisher:
+            publisher_api_id = int(os.getenv('PUBLISHER_API_ID'))
+            publisher_api_hash = os.getenv('PUBLISHER_API_HASH')
+            publisher_phone = os.getenv('PUBLISHER_PHONE')
+
+            publisher_session = await authenticate_account(
+                "Publisher",
+                publisher_api_id,
+                publisher_api_hash,
+                publisher_phone
+            )
 
         # Display results
         print_header("Authentication Complete!")
@@ -187,30 +269,58 @@ IMPORTANT:
         print(f"\n{Colors.BOLD}Add these lines to your .env file:{Colors.ENDC}\n")
 
         print(f"{Colors.OKGREEN}# Session strings (generated by auth_local.py){Colors.ENDC}")
-        print(f"READER_SESSION_STRING={reader_session}")
-        print(f"PUBLISHER_SESSION_STRING={publisher_session}")
+        if reader_session:
+            print(f"READER_SESSION_STRING={reader_session}")
+        if publisher_session:
+            print(f"PUBLISHER_SESSION_STRING={publisher_session}")
 
         print(f"\n{Colors.WARNING}{Colors.BOLD}SECURITY NOTES:{Colors.ENDC}")
         print(f"{Colors.WARNING}  • Keep these session strings SECRET{Colors.ENDC}")
         print(f"{Colors.WARNING}  • Never commit .env to version control{Colors.ENDC}")
-        print(f"{Colors.WARNING}  • Session strings grant full account access{Colors.ENDC}")
-        print(f"{Colors.WARNING}  • Revoke sessions in Telegram Settings > Privacy > Active Sessions{Colors.ENDC}")
 
-        print(f"\n{Colors.OKBLUE}{Colors.BOLD}NEXT STEPS:{Colors.ENDC}")
-        print(f"{Colors.OKBLUE}  1. Add the session strings above to your .env file{Colors.ENDC}")
-        print(f"{Colors.OKBLUE}  2. Start the Docker containers: docker-compose up -d{Colors.ENDC}")
-        print(f"{Colors.OKBLUE}  3. View logs: docker-compose logs -f app{Colors.ENDC}")
-
-        print_success("\nSetup complete! You can now run the bot in Docker.")
+        print_success("\nSetup complete!")
 
     except Exception as e:
         print_error(f"Authentication failed: {str(e)}")
         sys.exit(1)
 
 
+def parse_args():
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(
+        description='Telegram authentication and utility script',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s --publisher                    # Authenticate publisher only
+  %(prog)s --reader                       # Authenticate reader only
+  %(prog)s --get-users @user1 @user2      # Get user IDs
+  %(prog)s --get-group "Trading Group"    # Get group ID
+        """
+    )
+
+    parser.add_argument('--reader', action='store_true',
+                        help='Authenticate only the reader account')
+    parser.add_argument('--publisher', action='store_true',
+                        help='Authenticate only the publisher account')
+    parser.add_argument('--get-users', nargs='+', metavar='@USERNAME',
+                        help='Get user IDs for given usernames')
+    parser.add_argument('--get-group', metavar='NAME',
+                        help='Get group ID by name')
+
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
+    args = parse_args()
+
     try:
-        asyncio.run(main())
+        if args.get_users:
+            asyncio.run(get_user_ids(args.get_users))
+        elif args.get_group:
+            asyncio.run(get_group_id(args.get_group))
+        else:
+            asyncio.run(main_auth(args.reader, args.publisher))
     except KeyboardInterrupt:
-        print_warning("\n\nAuthentication cancelled by user.")
+        print_warning("\n\nCancelled by user.")
         sys.exit(1)
