@@ -167,6 +167,10 @@ class Config(BaseSettings):
         default=15,
         description="Timeout for Telegram API requests in seconds"
     )
+    API_PORT: int = Field(
+        default=8000,
+        description="Port for health check HTTP server"
+    )
 
     # ============ MEDIA ============
     MEDIA_DOWNLOAD_DIR: str = Field(

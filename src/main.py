@@ -27,6 +27,7 @@ from src.telethon_setup import (
 from src.handlers.signal_handler import handle_new_signal
 from src.handlers.update_handler import handle_signal_update
 from src.parsers.signal_parser import is_signal
+from src.api.health import start_health_server, stop_health_server
 
 # Initialize logging
 setup_logging(config.LOG_LEVEL, config.ENVIRONMENT)
@@ -168,7 +169,10 @@ async def main():
         # Start health check
         create_tracked_task(health_check_loop(), name="health_check")
 
-        logger.info("Bot started, listening for signals...")
+        # Start HTTP health server
+        await start_health_server()
+
+        logger.info("Bot started, listening for signals...", health_port=config.API_PORT)
 
         # Run until shutdown
         done, pending = await asyncio.wait(
@@ -184,6 +188,12 @@ async def main():
         raise
     finally:
         logger.info("Initiating graceful shutdown...")
+
+        # Stop health server
+        try:
+            await stop_health_server()
+        except Exception as e:
+            logger.warning("Error stopping health server", error=str(e))
 
         # Cancel running tasks
         for task in list(_running_tasks):
