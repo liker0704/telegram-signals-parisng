@@ -42,7 +42,7 @@ python-dotenv==1.0.0
 structlog==24.1.0
 
 # Data validation
-pydantic==2.5.0
+pydantic==2.12.5
 pydantic-settings==2.1.0
 
 # Redis client (optional, for caching)
