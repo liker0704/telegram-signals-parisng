@@ -19,6 +19,10 @@ async def init_db() -> asyncpg.Pool:
     """
     Initialize the database connection pool (thread-safe with async lock).
 
+    Supports two connection methods:
+    1. DATABASE_URL - full connection string (for Render/Supabase)
+    2. Individual POSTGRES_* variables (for local Docker Compose)
+
     Returns:
         asyncpg.Pool: The connection pool
 
@@ -39,20 +43,38 @@ async def init_db() -> asyncpg.Pool:
         if _pool is not None:
             return _pool
 
-        logger.info("Initializing database connection pool",
-                    host=config.POSTGRES_HOST,
-                    database=config.POSTGRES_DB)
+        # Use DATABASE_URL if provided (Render/Supabase)
+        if config.DATABASE_URL:
+            logger.info("Initializing database connection pool",
+                        connection_type="DATABASE_URL")
 
-        _pool = await asyncpg.create_pool(
-            host=config.POSTGRES_HOST,
-            port=config.POSTGRES_PORT,
-            user=config.POSTGRES_USER,
-            password=config.POSTGRES_PASSWORD,
-            database=config.POSTGRES_DB,
-            min_size=2,
-            max_size=10,
-            command_timeout=60,
-        )
+            _pool = await asyncpg.create_pool(
+                dsn=config.DATABASE_URL,
+                min_size=2,
+                max_size=10,
+                command_timeout=60,
+            )
+        else:
+            # Fall back to individual variables (local Docker Compose)
+            logger.info("Initializing database connection pool",
+                        host=config.POSTGRES_HOST,
+                        database=config.POSTGRES_DB)
+
+            # Build SSL context if needed
+            ssl_mode = config.POSTGRES_SSLMODE
+            ssl = True if ssl_mode in ("require", "verify-full", "verify-ca") else False
+
+            _pool = await asyncpg.create_pool(
+                host=config.POSTGRES_HOST,
+                port=config.POSTGRES_PORT,
+                user=config.POSTGRES_USER,
+                password=config.POSTGRES_PASSWORD,
+                database=config.POSTGRES_DB,
+                ssl=ssl,
+                min_size=2,
+                max_size=10,
+                command_timeout=60,
+            )
 
         logger.info("Database connection pool initialized")
         return _pool

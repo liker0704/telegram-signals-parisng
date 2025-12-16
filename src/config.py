@@ -130,11 +130,18 @@ class Config(BaseSettings):
     )
 
     # ============ DATABASE ============
+    # DATABASE_URL takes priority over individual POSTGRES_* variables
+    # Format: postgresql://user:password@host:port/database?sslmode=require
+    DATABASE_URL: Optional[str] = Field(
+        default=None,
+        description="Full database URL (for Render/Supabase). Overrides POSTGRES_* vars"
+    )
     POSTGRES_USER: str = Field(default="postgres", description="PostgreSQL username")
-    POSTGRES_PASSWORD: str = Field(..., description="PostgreSQL password")
+    POSTGRES_PASSWORD: str = Field(default="", description="PostgreSQL password")
     POSTGRES_DB: str = Field(default="signal_bot", description="PostgreSQL database name")
     POSTGRES_HOST: str = Field(default="db", description="PostgreSQL host")
     POSTGRES_PORT: int = Field(default=5432, description="PostgreSQL port")
+    POSTGRES_SSLMODE: str = Field(default="prefer", description="SSL mode for PostgreSQL")
     SQLALCHEMY_ECHO: bool = Field(
         default=False,
         description="Enable SQLAlchemy SQL query logging"
