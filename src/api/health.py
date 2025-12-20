@@ -5,7 +5,6 @@ Provides /health endpoint for external health checks (Render.com, etc.)
 """
 
 import time
-import asyncio
 from typing import Optional
 from aiohttp import web
 
