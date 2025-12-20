@@ -55,6 +55,8 @@ deep-translator>=1.11.0
 # Utilities
 cryptography==41.0.0        # For Telethon session encryption
 pillow==10.1.0              # Image processing (optional)
+opencv-python-headless>=4.8.0  # Image processing for OCR
+openai>=1.40.0              # OpenAI API for translation and image editing
 
 # Development dependencies (optional)
 pytest==7.4.0
