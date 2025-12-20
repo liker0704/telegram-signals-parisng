@@ -27,9 +27,15 @@ jobs:
           echo "Triggering Render deployment..."
           response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}")
 
-          if [ "$response" = "200" ] || [ "$response" = "201" ]; then
-            echo "✅ Deploy triggered successfully (HTTP $response)"
-          else
-            echo "❌ Deploy failed (HTTP $response)"
-            exit 1
-          fi
+          case "$response" in
+            200|201)
+              echo "✅ Deploy triggered successfully"
+              ;;
+            409)
+              echo "⏳ Deploy already in progress, skipping"
+              ;;
+            *)
+              echo "❌ Deploy failed (HTTP $response)"
+              exit 1
+              ;;
+          esac
