@@ -143,15 +143,29 @@ class OpenAIImageEditor(ImageEditor):
                         method=self.name
                     )
 
-                # Download the edited image
-                import requests
-                image_url = response.data[0].url
-                image_response = requests.get(image_url)
-                image_response.raise_for_status()
-
-                # Convert to PIL Image
+                # Get the edited image (supports both URL and base64 response)
+                import base64
                 from io import BytesIO
-                edited_image = Image.open(BytesIO(image_response.content))
+
+                image_data = response.data[0]
+
+                if image_data.b64_json:
+                    # New API returns base64 encoded image
+                    image_bytes = base64.b64decode(image_data.b64_json)
+                    edited_image = Image.open(BytesIO(image_bytes))
+                elif image_data.url:
+                    # Legacy API returns URL
+                    import requests
+                    image_response = requests.get(image_data.url)
+                    image_response.raise_for_status()
+                    edited_image = Image.open(BytesIO(image_response.content))
+                else:
+                    logger.error("OpenAI response has neither URL nor b64_json")
+                    return EditResult(
+                        success=False,
+                        error="OpenAI response has no image data",
+                        method=self.name
+                    )
 
                 # Save if output path specified
                 if output_path:
@@ -167,8 +181,7 @@ class OpenAIImageEditor(ImageEditor):
                         "input_path": image_path,
                         "output_path": output_path,
                         "model": self.model,
-                        "num_translations": len(translations),
-                        "image_url": image_url
+                        "num_translations": len(translations)
                     }
                 )
 

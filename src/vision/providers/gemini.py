@@ -174,14 +174,21 @@ class GeminiVisionProvider(VisionProvider):
         for line_num, line in enumerate(raw_text.split('\n'), 1):
             line = line.strip()
 
-            # Skip empty lines or lines without the arrow separator
-            if not line or '->' not in line:
+            # Skip empty lines
+            if not line:
+                continue
+
+            # Normalize Unicode arrows to ASCII for consistent parsing
+            normalized_line = line.replace("→", "->").replace("➔", "->").replace("⟶", "->")
+
+            # Skip lines without the arrow separator
+            if '->' not in normalized_line:
                 continue
 
             # Format: "ORIGINAL: text -> ENGLISH: translation"
-            if 'ORIGINAL:' in line and 'ENGLISH:' in line:
+            if 'ORIGINAL:' in normalized_line and 'ENGLISH:' in normalized_line:
                 try:
-                    parts = line.split('->', 1)  # Split only on first arrow
+                    parts = normalized_line.split('->', 1)  # Split only on first arrow
                     if len(parts) != 2:
                         continue
 

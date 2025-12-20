@@ -108,7 +108,7 @@ async def extract_text_from_image(image: Image.Image) -> List[Dict[str, str]]:
             if translations:
                 logger.info("Vision chain extraction successful",
                           count=len(translations),
-                          provider=result.provider_used,
+                          provider=result.provider_name,
                           translations=[f"{t['russian']} -> {t['english']}" for t in translations[:5]])
                 return translations
             else:

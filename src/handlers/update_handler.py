@@ -7,6 +7,7 @@ from telethon.events import NewMessage
 
 from src.config import config
 from src.utils.logger import get_logger
+from src.utils.text_cleaner import strip_promo_content
 from src.formatters.message import build_final_message
 from src.translators.fallback import translate_text_with_fallback
 from src.ocr import process_image
@@ -112,8 +113,9 @@ async def handle_signal_update(event: NewMessage.Event) -> None:
                 'image_local_path': media_info['local_path']
             })
 
-        # Step 5: Translate text + process image
-        translation_task = translate_text_with_fallback(message.text or '')
+        # Step 5: Clean text (remove promo/donation links) and translate
+        clean_text = strip_promo_content(message.text or '')
+        translation_task = translate_text_with_fallback(clean_text)
         image_edit_task = (
             process_image(media_info['local_path'])
             if media_info else asyncio.sleep(0)
@@ -125,7 +127,7 @@ async def handle_signal_update(event: NewMessage.Event) -> None:
             return_exceptions=True
         )
 
-        translated_text = results[0] if not isinstance(results[0], Exception) else message.text
+        translated_text = results[0] if not isinstance(results[0], Exception) else clean_text
         edited_image_path = results[1] if not isinstance(results[1], Exception) else None
 
         if isinstance(results[0], Exception):

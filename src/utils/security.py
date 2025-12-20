@@ -1,7 +1,8 @@
 """Security utilities for file validation."""
-import imghdr
 from pathlib import Path
 from typing import Optional
+
+from PIL import Image
 
 from src.config import config
 from src.utils.logger import get_logger
@@ -9,7 +10,7 @@ from src.utils.logger import get_logger
 logger = get_logger(__name__)
 
 ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'}
-ALLOWED_IMAGE_MAGIC = {'jpeg', 'png', 'gif', 'webp', 'bmp'}
+ALLOWED_IMAGE_FORMATS = {'JPEG', 'PNG', 'GIF', 'WEBP', 'BMP'}
 
 
 def validate_file_path(file_path: str, base_dir: Optional[str] = None) -> bool:
@@ -47,10 +48,10 @@ def validate_image_file(file_path: str) -> bool:
         return False
 
     try:
-        magic = imghdr.what(file_path)
-        if magic not in ALLOWED_IMAGE_MAGIC:
-            logger.warning("Invalid image magic bytes", path=file_path, magic=magic)
-            return False
+        with Image.open(file_path) as img:
+            if img.format not in ALLOWED_IMAGE_FORMATS:
+                logger.warning("Invalid image format", path=file_path, format=img.format)
+                return False
     except Exception:
         return False
 

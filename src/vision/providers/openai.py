@@ -122,10 +122,13 @@ class OpenAIVisionProvider(VisionProvider):
                 continue
 
             # Expected format: ORIGINAL: text -> ENGLISH: translation
+            # Also handle Unicode arrow → (U+2192) that AI models sometimes use
             if "ORIGINAL:" in line and "ENGLISH:" in line:
                 try:
+                    # Normalize Unicode arrows to ASCII
+                    normalized_line = line.replace("→", "->").replace("➔", "->").replace("⟶", "->")
                     # Split by arrow
-                    parts = line.split("->")
+                    parts = normalized_line.split("->")
                     if len(parts) == 2:
                         original_part = parts[0].strip()
                         english_part = parts[1].strip()
