@@ -19,6 +19,7 @@ from src.db.queries import (
     db_find_update_by_source_msg
 )
 from src.telethon_setup import get_publisher_client
+from src.handlers.forward_helper import forward_original_message, is_forwarding_enabled
 
 logger = get_logger(__name__)
 
@@ -82,6 +83,9 @@ async def handle_signal_update(event: NewMessage.Event) -> None:
                           signal_id=parent_signal['id'])
             return
 
+        # Get parent's forward message ID for threading
+        parent_forward_msg_id = parent_signal.get('forward_message_id')
+
         logger.info("Processing signal update",
                     source_msg_id=message.id,
                     parent_signal_id=parent_signal['id'])
@@ -113,7 +117,7 @@ async def handle_signal_update(event: NewMessage.Event) -> None:
                 'image_local_path': media_info['local_path']
             })
 
-        # Step 5: Clean text (remove promo/donation links) and translate
+        # Step 5: Clean text and prepare parallel tasks
         clean_text = strip_promo_content(message.text or '')
         translation_task = translate_text_with_fallback(clean_text)
         image_edit_task = (
@@ -121,14 +125,34 @@ async def handle_signal_update(event: NewMessage.Event) -> None:
             if media_info else asyncio.sleep(0)
         )
 
+        # Forward original reply (threaded to parent forward if exists)
+        forward_task = (
+            forward_original_message(
+                original_text=message.text or '',
+                media_path=media_info['local_path'] if media_info else None,
+                reply_to_forward_id=parent_forward_msg_id  # Thread to parent
+            )
+            if is_forwarding_enabled() else asyncio.sleep(0)
+        )
+
         results = await asyncio.gather(
             translation_task,
             image_edit_task,
+            forward_task,
             return_exceptions=True
         )
 
         translated_text = results[0] if not isinstance(results[0], Exception) else clean_text
         edited_image_path = results[1] if not isinstance(results[1], Exception) else None
+
+        # Handle forward result
+        forward_msg_id = None
+        if is_forwarding_enabled() and len(results) > 2:
+            forward_result = results[2]
+            if not isinstance(forward_result, Exception) and forward_result:
+                forward_msg_id, forward_error = forward_result
+                if forward_error:
+                    logger.warning("Forward failed", error=forward_error)
 
         if isinstance(results[0], Exception):
             logger.error("Translation failed for update", error=str(results[0]))
@@ -166,7 +190,9 @@ async def handle_signal_update(event: NewMessage.Event) -> None:
             'translated_text': translated_text,
             'image_ocr_text': None,  # No longer using OCR
             'status': 'POSTED',
-            'processed_at': datetime.utcnow()
+            'processed_at': datetime.utcnow(),
+            'forward_chat_id': config.FORWARD_GROUP_ID if forward_msg_id else None,
+            'forward_message_id': forward_msg_id,
         })
 
     except Exception as e:
