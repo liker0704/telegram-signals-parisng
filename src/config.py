@@ -47,6 +47,10 @@ class Config(BaseSettings):
     # ============ GROUP IDs ============
     SOURCE_GROUP_ID: int = Field(..., description="Source Telegram group ID (negative, starts with -100)")
     TARGET_GROUP_ID: int = Field(..., description="Target Telegram group ID (negative, starts with -100)")
+    FORWARD_GROUP_ID: Optional[int] = Field(
+        default=None,
+        description="Optional: Forward original messages to this group (negative, starts with -100)"
+    )
     SOURCE_ALLOWED_USERS: Optional[str] = Field(
         default=None,
         description="Comma-separated list of allowed user IDs"
@@ -199,11 +203,11 @@ class Config(BaseSettings):
 
     # ============ VALIDATORS ============
 
-    @field_validator("SOURCE_GROUP_ID", "TARGET_GROUP_ID")
+    @field_validator("SOURCE_GROUP_ID", "TARGET_GROUP_ID", "FORWARD_GROUP_ID")
     @classmethod
-    def validate_group_id(cls, v: int) -> int:
+    def validate_group_id(cls, v: Optional[int]) -> Optional[int]:
         """Validate that group IDs are negative (Telegram supergroup format)."""
-        if v >= 0:
+        if v is not None and v >= 0:
             raise ValueError(
                 f"Group ID must be negative (starts with -100 for supergroups), got {v}"
             )
