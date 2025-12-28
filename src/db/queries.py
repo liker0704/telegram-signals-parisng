@@ -13,14 +13,16 @@ ALLOWED_SIGNAL_COLUMNS = frozenset({
     'status', 'pair', 'direction', 'timeframe', 'entry_range',
     'tp1', 'tp2', 'tp3', 'sl', 'risk_percent', 'target_chat_id',
     'target_message_id', 'translated_text', 'image_ocr_text',
-    'processed_at', 'error_message', 'image_local_path'
+    'processed_at', 'error_message', 'image_local_path',
+    'forward_chat_id', 'forward_message_id'
 })
 
 ALLOWED_SIGNAL_UPDATE_COLUMNS = frozenset({
     'status', 'pair', 'direction', 'timeframe', 'entry_range',
     'tp1', 'tp2', 'tp3', 'sl', 'risk_percent', 'target_chat_id',
     'target_message_id', 'translated_text', 'image_ocr_text',
-    'processed_at', 'error_message', 'image_local_path'
+    'processed_at', 'error_message', 'image_local_path',
+    'forward_chat_id', 'forward_message_id'
 })
 
 

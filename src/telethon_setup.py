@@ -205,6 +205,19 @@ async def verify_group_access(
                      error=str(e))
         raise
 
+    # Verify Publisher has access to forward group (if configured)
+    if config.FORWARD_GROUP_ID:
+        try:
+            forward_entity = await publisher.get_entity(config.FORWARD_GROUP_ID)
+            logger.info("Publisher has access to forward group",
+                        group_id=config.FORWARD_GROUP_ID,
+                        group_title=getattr(forward_entity, 'title', 'N/A'))
+        except Exception as e:
+            logger.error("Publisher cannot access forward group",
+                         group_id=config.FORWARD_GROUP_ID,
+                         error=str(e))
+            raise
+
     return True
 
 
