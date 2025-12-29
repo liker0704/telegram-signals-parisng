@@ -31,7 +31,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install runtime dependencies + fonts for PIL text rendering + OpenMP for PaddlePaddle
+# Install runtime dependencies + fonts for PIL text rendering
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     postgresql-client \
@@ -53,9 +53,6 @@ RUN groupadd -r signalbot && useradd -r -g signalbot -m signalbot
 RUN mkdir -p /app/src /app/logs /app/sessions /tmp/signals && \
     chown -R signalbot:signalbot /app /tmp/signals
 
-# Pre-download PaddleOCR models as signalbot user (saves startup time)
-USER signalbot
-RUN python -c "from paddleocr import PaddleOCR; PaddleOCR(lang='ru')" || true
 USER root
 
 # Copy application code

@@ -6,12 +6,6 @@ __all__ = ["ImageEditor", "EditResult", "ImageEditorFactory"]
 
 # Conditional imports for editors - catch all exceptions, not just ImportError
 try:
-    from src.image_editing.paddleocr_editor import PaddleOCREditor  # noqa: F401
-    __all__.append("PaddleOCREditor")
-except Exception:
-    pass
-
-try:
     from src.image_editing.gemini_editor import GeminiImageEditor  # noqa: F401
     __all__.append("GeminiImageEditor")
 except Exception:

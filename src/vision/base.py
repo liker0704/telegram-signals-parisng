@@ -149,7 +149,7 @@ class VisionProvider(ABC):
         Get the name of this vision provider.
 
         Returns:
-            str: Provider name (e.g., "gemini", "tesseract", "paddleocr")
+            str: Provider name (e.g., "gemini", "openai")
         """
         pass
 

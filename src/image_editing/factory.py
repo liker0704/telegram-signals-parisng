@@ -13,7 +13,6 @@ from src.config import config
 from src.image_editing.base import ImageEditor
 from src.image_editing.openai_editor import OpenAIImageEditor
 from src.image_editing.gemini_editor import GeminiImageEditor
-from src.image_editing.paddleocr_editor import PaddleOCREditor
 
 logger = structlog.get_logger(__name__)
 
@@ -32,7 +31,6 @@ class ImageEditorFactory:
     _editors: Dict[str, Type[ImageEditor]] = {
         "openai": OpenAIImageEditor,
         "gemini": GeminiImageEditor,
-        "paddleocr": PaddleOCREditor,
     }
 
     @classmethod
@@ -74,7 +72,7 @@ class ImageEditorFactory:
         Get an image editor instance by name.
 
         Args:
-            name: Name of the editor ("openai", "gemini", "paddleocr").
+            name: Name of the editor ("openai", "gemini").
                   If None, uses config.IMAGE_EDITOR.
 
         Returns:
@@ -196,7 +194,7 @@ class ImageEditorFactory:
 
         Examples:
             >>> status = ImageEditorFactory.list_available_editors()
-            >>> # {'openai': True, 'gemini': False, 'paddleocr': True}
+            >>> # {'openai': True, 'gemini': False}
         """
         availability = {}
 

@@ -131,8 +131,8 @@ class TestConfig:
         """Test that IMAGE_EDITOR is configured."""
         from src.config import config
         assert hasattr(config, 'IMAGE_EDITOR'), "Config should have IMAGE_EDITOR"
-        assert config.IMAGE_EDITOR in ['openai', 'gemini', 'paddleocr'], \
-            f"IMAGE_EDITOR should be openai, gemini, or paddleocr, got {config.IMAGE_EDITOR}"
+        assert config.IMAGE_EDITOR in ['openai', 'gemini'], \
+            f"IMAGE_EDITOR should be openai or gemini, got {config.IMAGE_EDITOR}"
         print(f"IMAGE_EDITOR: {config.IMAGE_EDITOR}")
         assert True
 

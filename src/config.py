@@ -116,7 +116,7 @@ class Config(BaseSettings):
     # ============ IMAGE EDITING ============
     IMAGE_EDITOR: str = Field(
         default="openai",
-        description="Image editor for text replacement (paddleocr, gemini, openai)"
+        description="Image editor for text replacement (gemini, openai)"
     )
     IMAGE_EDITOR_FALLBACK: Optional[str] = Field(
         default="gemini",
@@ -250,7 +250,7 @@ class Config(BaseSettings):
     @classmethod
     def validate_image_editor(cls, v: str) -> str:
         """Validate image editor is one of the allowed values."""
-        allowed = {"paddleocr", "gemini", "openai"}
+        allowed = {"gemini", "openai"}
         if v.lower() not in allowed:
             raise ValueError(f"IMAGE_EDITOR must be one of {allowed}, got {v}")
         return v.lower()
