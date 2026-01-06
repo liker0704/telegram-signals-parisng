@@ -119,13 +119,14 @@ class GeminiImageEditor(ImageEditor):
 
             client = self._get_client()
 
+            # Create image part using new google-genai API
+            from google.genai import types
+            image_part = types.Part.from_bytes(data=image_data, mime_type="image/jpeg")
+
             # Call Gemini API (synchronous)
             response = client.models.generate_content(
                 model=self.model,
-                contents=[
-                    prompt,
-                    {"mime_type": "image/jpeg", "data": image_data}
-                ]
+                contents=[prompt, image_part]
             )
 
             # Extract image from response
@@ -210,30 +211,47 @@ class GeminiImageEditor(ImageEditor):
 
     def _build_prompt(self, translations: Dict[str, str]) -> str:
         """
-        Build a prompt for Gemini based on the translations.
+        Build a detailed prompt for Gemini based on the translations.
 
         Args:
             translations: Dict mapping original text to replacement text
 
         Returns:
-            Prompt string for Gemini
+            Detailed prompt string for Gemini with explicit preservation instructions
         """
         if not translations:
             return (
                 "Translate all Russian text in this image to English. "
-                "Preserve the original formatting, colors, and layout. "
-                "Return the edited image with English text."
+                "Preserve the original formatting, colors, and layout exactly."
             )
 
-        # Build a prompt with specific translations
-        replacements = "\n".join(
-            f"- '{orig}' → '{trans}'"
+        # Build bullet list of replacements
+        replacements_list = "\n".join(
+            f'- "{orig}" → "{trans}"'
             for orig, trans in translations.items()
         )
 
-        return (
-            f"Edit this image by replacing the following text:\n\n{replacements}\n\n"
-            "Preserve the original formatting, colors, fonts, and layout exactly. "
-            "Keep all other elements of the image unchanged. "
-            "Return the edited image with the text replaced."
-        )
+        return f"""This is a trading signal image. Replace the following text:
+
+{replacements_list}
+
+PRESERVE (keep exactly as is):
+- Font style, size, weight, and color of all text
+- Text position, alignment, and spacing
+- All charts, candlesticks, and technical indicators
+- Price scale, axis labels, and grid lines on the right side
+- All other text elements not listed for replacement
+- Background colors and overall composition
+- Image dimensions and aspect ratio
+- Border lines, boxes, and decorative elements
+
+DO NOT:
+- Add any watermarks, logos, or signatures
+- Crop, resize, or change image dimensions
+- Change the input aspect ratio
+- Modify charts, indicators, or graphical elements
+- Change colors, fonts, or styling
+- Alter any text not explicitly listed for replacement
+- Add or remove any visual elements
+
+Replace ONLY the specified text while maintaining perfect visual consistency with the original image."""

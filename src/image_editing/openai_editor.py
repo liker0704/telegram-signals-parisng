@@ -67,6 +67,43 @@ class OpenAIImageEditor(ImageEditor):
                 raise RuntimeError("openai library not installed") from e
         return self._client
 
+    # Supported sizes by OpenAI Images Edit API
+    SUPPORTED_SIZES = {
+        "1024x1024": 1.0,      # square
+        "1536x1024": 1.5,      # landscape
+        "1024x1536": 0.667,    # portrait
+    }
+
+    def _get_output_size(self, image_path: str) -> str:
+        """
+        Choose the best supported output size based on input image aspect ratio.
+
+        OpenAI Images Edit API supports only:
+        - 1024x1024 (square, 1:1)
+        - 1536x1024 (landscape, 3:2)
+        - 1024x1536 (portrait, 2:3)
+
+        Returns the closest match to minimize aspect ratio distortion.
+        """
+        with Image.open(image_path) as img:
+            width, height = img.size
+            aspect_ratio = width / height
+
+        # Find closest aspect ratio
+        best_size = min(
+            self.SUPPORTED_SIZES.keys(),
+            key=lambda s: abs(self.SUPPORTED_SIZES[s] - aspect_ratio)
+        )
+
+        logger.debug(
+            "Selected output size",
+            input_size=f"{width}x{height}",
+            aspect_ratio=round(aspect_ratio, 3),
+            output_size=best_size
+        )
+
+        return best_size
+
     def edit_image(
         self,
         image_path: str,
@@ -116,6 +153,9 @@ class OpenAIImageEditor(ImageEditor):
             # Build prompt from translations
             prompt = self._build_prompt(translations)
 
+            # Choose output size based on input aspect ratio
+            output_size = self._get_output_size(image_path)
+
             # Create mask for text regions (simple approach: white mask)
             # OpenAI uses the mask to determine which areas to edit
             mask_path = self._create_mask(image_path)
@@ -132,7 +172,7 @@ class OpenAIImageEditor(ImageEditor):
                         mask=mask_file,
                         prompt=prompt,
                         n=1,
-                        size="1024x1024"  # OpenAI requires specific sizes
+                        size=output_size
                     )
 
                 if not response.data:
@@ -226,13 +266,13 @@ class OpenAIImageEditor(ImageEditor):
 
     def _build_prompt(self, translations: Dict[str, str]) -> str:
         """
-        Build a prompt for OpenAI based on the translations.
+        Build a detailed prompt for OpenAI based on the translations.
 
         Args:
             translations: Dict mapping original text to replacement text
 
         Returns:
-            Prompt string for OpenAI
+            Detailed prompt string for OpenAI with explicit preservation instructions
         """
         if not translations:
             return (
@@ -240,17 +280,35 @@ class OpenAIImageEditor(ImageEditor):
                 "Preserve the original formatting, colors, and layout exactly."
             )
 
-        # Build a prompt with specific translations
-        replacements = ", ".join(
-            f"'{orig}' to '{trans}'"
+        # Build bullet list of replacements
+        replacements_list = "\n".join(
+            f'- "{orig}" → "{trans}"'
             for orig, trans in translations.items()
         )
 
-        return (
-            f"Replace the following text in the image: {replacements}. "
-            "Preserve the original formatting, colors, fonts, and layout exactly. "
-            "Keep all other elements unchanged."
-        )
+        return f"""This is a trading signal image. Replace the following text:
+
+{replacements_list}
+
+PRESERVE (keep exactly as is):
+- Font style, size, weight, and color of all text
+- Text position, alignment, and spacing
+- All charts, candlesticks, and technical indicators
+- Price scale, axis labels, and grid lines on the right side
+- All other text elements not listed for replacement
+- Background colors and overall composition
+- Image dimensions and aspect ratio
+- Border lines, boxes, and decorative elements
+
+DO NOT:
+- Add any watermarks, logos, or signatures
+- Crop, resize, or change image dimensions
+- Modify charts, indicators, or graphical elements
+- Change colors, fonts, or styling
+- Alter any text not explicitly listed for replacement
+- Add or remove any visual elements
+
+Replace ONLY the specified text while maintaining perfect visual consistency with the original image."""
 
     def _create_mask(self, image_path: str) -> str:
         """
