@@ -20,6 +20,7 @@ from src.db.queries import (
 )
 from src.telethon_setup import get_publisher_client
 from src.handlers.forward_helper import forward_original_message, is_forwarding_enabled
+from src.state import start_flow, get_flow_owner
 
 logger = get_logger(__name__)
 
@@ -82,6 +83,37 @@ async def handle_signal_update(event: NewMessage.Event) -> None:
             logger.warning("Parent signal was not posted to target",
                           signal_id=parent_signal['id'])
             return
+
+        # Check if sender is allowed in this flow
+        signal_id = parent_signal['id']
+        signal_author = parent_signal.get('source_user_id')
+
+        # First check in-memory cache
+        cached_owner = get_flow_owner(signal_id)
+
+        if cached_owner is not None:
+            # Cache hit - use cached value
+            if cached_owner != message.sender_id:
+                logger.debug("Reply from different user (cached), ignoring",
+                            signal_id=signal_id,
+                            sender_id=message.sender_id,
+                            flow_owner=cached_owner)
+                return
+        elif signal_author and signal_author > 0 and signal_author != message.sender_id:
+            # Cache miss - check DB and reject if mismatch
+            # signal_author > 0 check handles anonymous/unknown senders (source_user_id=0)
+            logger.debug("Reply from different user (DB), ignoring",
+                        signal_id=signal_id,
+                        sender_id=message.sender_id,
+                        signal_author=signal_author)
+            return
+        else:
+            # Cache miss but allowed - populate cache for future
+            # Skip if source_user_id is 0 (anonymous/unknown sender)
+            if signal_author and signal_author > 0:
+                start_flow(signal_id, signal_author)
+                logger.debug("Populated flow cache from DB",
+                            signal_id=signal_id, user_id=signal_author)
 
         # Get parent's forward message ID for threading
         parent_forward_msg_id = parent_signal.get('forward_message_id')

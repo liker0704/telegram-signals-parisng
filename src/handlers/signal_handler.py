@@ -16,6 +16,7 @@ from src.media.downloader import download_and_process_media, cleanup_media
 from src.db.queries import db_insert_signal, db_update_signal, db_find_signal_by_source_msg
 from src.telethon_setup import get_publisher_client
 from src.handlers.forward_helper import forward_original_message, is_forwarding_enabled
+from src.state import start_flow
 
 logger = get_logger(__name__)
 
@@ -78,6 +79,11 @@ async def handle_new_signal(event: NewMessage.Event) -> None:
         }
         signal_id = await db_insert_signal(signal_data)
         logger.info("Created signal record", signal_id=signal_id)
+
+        # Start flow tracking (only for identified users)
+        if message.sender_id and message.sender_id > 0:
+            start_flow(signal_id, message.sender_id)
+            logger.debug("Started flow tracking", signal_id=signal_id, user_id=message.sender_id)
 
         # Step 2: Update to PROCESSING
         await db_update_signal(signal_id, {'status': 'PROCESSING'})
