@@ -28,7 +28,7 @@ jobs:
           response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}")
 
           case "$response" in
-            200|201)
+            200|201|202)
               echo "✅ Deploy triggered successfully"
               ;;
             409)
