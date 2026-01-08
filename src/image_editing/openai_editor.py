@@ -83,17 +83,25 @@ class OpenAIImageEditor(ImageEditor):
         - 1536x1024 (landscape, 3:2)
         - 1024x1536 (portrait, 2:3)
 
-        Returns the closest match to minimize aspect ratio distortion.
+        Uses threshold-based selection to avoid cropping:
+        - Landscape (width > height * 1.1) → 1536x1024
+        - Portrait (height > width * 1.1) → 1024x1536
+        - Near-square → 1024x1024
         """
         with Image.open(image_path) as img:
             width, height = img.size
             aspect_ratio = width / height
 
-        # Find closest aspect ratio
-        best_size = min(
-            self.SUPPORTED_SIZES.keys(),
-            key=lambda s: abs(self.SUPPORTED_SIZES[s] - aspect_ratio)
-        )
+        # Use thresholds to preserve orientation
+        if width > height * 1.1:
+            # Landscape image - use landscape output
+            best_size = "1536x1024"
+        elif height > width * 1.1:
+            # Portrait image - use portrait output
+            best_size = "1024x1536"
+        else:
+            # Near-square - use square
+            best_size = "1024x1024"
 
         logger.debug(
             "Selected output size",
@@ -149,6 +157,10 @@ class OpenAIImageEditor(ImageEditor):
                 output_path=output_path,
                 model=self.model
             )
+
+            # Store original size to restore later
+            with Image.open(image_path) as original_img:
+                original_size = original_img.size
 
             # Build prompt from translations
             prompt = self._build_prompt(translations)
@@ -206,6 +218,15 @@ class OpenAIImageEditor(ImageEditor):
                         error="OpenAI response has no image data",
                         method=self.name
                     )
+
+                # Resize back to original dimensions if different
+                if edited_image.size != original_size:
+                    logger.debug(
+                        "Resizing to original size",
+                        from_size=edited_image.size,
+                        to_size=original_size
+                    )
+                    edited_image = edited_image.resize(original_size, Image.Resampling.LANCZOS)
 
                 # Save if output path specified
                 if output_path:
