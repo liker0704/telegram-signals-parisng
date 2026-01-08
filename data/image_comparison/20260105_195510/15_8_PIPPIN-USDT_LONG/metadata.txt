@@ -1,0 +1,35 @@
+Signal ID: 8
+Pair: PIPPIN/USDT
+Direction: LONG
+Created: 2025-12-17T19:03:30+00:00
+Source message ID: 8739
+Target message ID: 10486
+
+--- ORIGINAL TEXT ---
+#идея
+
+Торговая идея на PIPPIN/USDT 15М ЛОНГ
+  
+Актив снял ликвидность снизу на ТФ 1Д, держится лучше остального рынка, при отскоке BTC, можем увидеть хороший импульс
+
+Вход: 0.40734 - 0.41980
+Стоп: 0.37167
+
+Тейк 1: 0.45596
+
+
+⚠️Данная рекомендация не является торговым сигналом. вы заходите в сделку, если согласны с ее параметрами. параметры сделки могут быть скорректированы вами самостоятельно, исходя из вашего видения рынка и риск-менеджмент
+
+--- TRANSLATED TEXT ---
+#idea
+
+Trading idea on PIPPIN/USDT 15M LONG
+
+The asset has removed liquidity from the bottom on the 1D timeframe, is holding better than the rest of the market, and with a bounce in BTC, we may see a good impulse.
+
+Entry: 0.40734 - 0.41980  
+Stop: 0.37167
+
+Take 1: 0.45596
+
+⚠️This recommendation is not a trading signal. You enter the trade if you agree with its parameters. The parameters of the trade can be adjusted by you based on your market vision and risk management.

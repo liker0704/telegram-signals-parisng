@@ -1,0 +1,35 @@
+Signal ID: 33
+Pair: B/USDT
+Direction: SHORT
+Created: 2025-12-26T18:33:18+00:00
+Source message ID: 9248
+Target message ID: 10549
+
+--- ORIGINAL TEXT ---
+#идея
+
+Торговая идея на B/USDT 15М ШОРТ📉
+  
+Актив скатывается, без сильных импульсов вверх, жду продол
+
+Вход: 0.17715 - 0.17835
+Стоп: 0.18250
+
+Тейк 1: 0.17259
+
+
+⚠️Данная рекомендация не является торговым сигналом. вы заходите в сделку, если согласны с ее параметрами. параметры сделки могут быть скорректированы вами самостоятельно, исходя из вашего видения рынка и риск-менеджмент
+
+--- TRANSLATED TEXT ---
+#idea
+
+Trading idea on B/USDT 15M SHORT📉
+
+The asset is rolling back, without strong upward impulses, waiting for continuation
+
+Entry: 0.17715 - 0.17835
+Stop: 0.18250
+
+Take 1: 0.17259
+
+⚠️This recommendation is not a trading signal. You enter the trade if you agree with its parameters. The parameters of the trade can be adjusted by you independently, based on your market view and risk management.

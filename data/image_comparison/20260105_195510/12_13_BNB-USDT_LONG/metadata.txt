@@ -1,0 +1,35 @@
+Signal ID: 13
+Pair: BNB/USDT
+Direction: LONG
+Created: 2025-12-19T18:55:56+00:00
+Source message ID: 8790
+Target message ID: 10488
+
+--- ORIGINAL TEXT ---
+#идея
+
+Торговая идея на BNB/USDT 15М ЛОНГ
+  
+Доминация снижается, актив консолидируется у уровня, жду пробой
+
+Вход: 848.6 - 851.2
+Стоп: 841.7
+
+Тейк 1: 858.1
+
+
+⚠️Данная рекомендация не является торговым сигналом. вы заходите в сделку, если согласны с ее параметрами. параметры сделки могут быть скорректированы вами самостоятельно, исходя из вашего видения рынка и риск-менеджмент
+
+--- TRANSLATED TEXT ---
+#idea
+
+Trading idea on BNB/USDT 15M LONG
+
+Dominance is decreasing, the asset is consolidating at the level, waiting for a breakout
+
+Entry: 848.6 - 851.2  
+Stop: 841.7
+
+Take 1: 858.1
+
+⚠️This recommendation is not a trading signal. You enter the trade if you agree with its parameters. The parameters of the trade can be adjusted by you based on your market vision and risk management.

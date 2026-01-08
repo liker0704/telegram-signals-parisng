@@ -1,0 +1,35 @@
+Signal ID: 6
+Pair: B/USDT
+Direction: SHORT
+Created: 2025-12-18T18:51:44+00:00
+Source message ID: 8775
+Target message ID: 10484
+
+--- ORIGINAL TEXT ---
+#идея
+
+Торговая идея на B/USDT 5М ШОРТ📉
+  
+Актив снял ликвидность сверху, жду продолжение движения по тренду
+
+Вход: 0.22970 - 0.23056
+Стоп: 0.23350
+
+Тейк 1: 0.22683
+
+
+⚠️Данная рекомендация не является торговым сигналом. вы заходите в сделку, если согласны с ее параметрами. параметры сделки могут быть скорректированы вами самостоятельно, исходя из вашего видения рынка и риск-менеджмент
+
+--- TRANSLATED TEXT ---
+#idea
+
+Trading idea on B/USDT 5M SHORT📉
+
+The asset has removed liquidity from above, I expect the continuation of the movement in the trend.
+
+Entry: 0.22970 - 0.23056  
+Stop: 0.23350  
+
+Take 1: 0.22683  
+
+⚠️This recommendation is not a trading signal. You enter the trade if you agree with its parameters. The parameters of the trade can be adjusted by you based on your market view and risk management.

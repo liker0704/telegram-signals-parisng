@@ -1,0 +1,39 @@
+Signal ID: 34
+Pair: B/USDT
+Direction: SHORT
+Created: 2025-12-26T20:45:36+00:00
+Source message ID: 9263
+Target message ID: 10551
+
+--- ORIGINAL TEXT ---
+#идея
+
+Торговая идея на B/USDT 15М ШОРТ📉
+  
+Актив снял ликвидность и перекрыл Лонг имб на м5, жду снижения
+
+Вход: 0.17724 - 0.17579
+Стоп: 0.17919
+
+Тейк 1: 0.17311
+Тейк 2: 0.17014
+
+
+
+
+⚠️Данная рекомендация не является торговым сигналом. вы заходите в сделку, если согласны с ее параметрами. параметры сделки могут быть скорректированы вами самостоятельно, исходя из вашего видения рынка и риск-менеджмент
+
+--- TRANSLATED TEXT ---
+#idea
+
+Trading idea on B/USDT 15M SHORT📉
+
+The asset removed liquidity and closed the long imbalance on m5, expecting a decline.
+
+Entry: 0.17724 - 0.17579
+Stop: 0.17919
+
+Take 1: 0.17311
+Take 2: 0.17014
+
+⚠️This recommendation is not a trading signal. You enter the trade if you agree with its parameters. The parameters of the trade can be adjusted by you based on your market view and risk management.

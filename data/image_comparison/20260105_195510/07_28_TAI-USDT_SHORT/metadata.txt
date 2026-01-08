@@ -1,0 +1,37 @@
+Signal ID: 28
+Pair: TAI/USDT
+Direction: SHORT
+Created: 2025-12-23T19:49:43+00:00
+Source message ID: 8950
+Target message ID: 10514
+
+--- ORIGINAL TEXT ---
+#идея
+
+Торговая идея на  TAI/USDT 15М ШОРТ📉
+  
+Актив снял ликвидность сверху и сломал структуру, жду продолжения тренда
+
+Вход: 0.01919 - 0.01943
+Стоп: 0.01987
+
+Тейк 1: 0.01881
+Тейк 2:  0.01827
+
+
+⚠️Данная рекомендация не является торговым сигналом. вы заходите в сделку, если согласны с ее параметрами. параметры сделки могут быть скорректированы вами самостоятельно, исходя из вашего видения рынка и риск-менеджмент
+
+--- TRANSLATED TEXT ---
+#idea
+
+Trading idea on TAI/USDT 15M SHORT📉
+
+The asset removed liquidity from the top and broke the structure, expecting a continuation of the trend
+
+Entry: 0.01919 - 0.01943
+Stop: 0.01987
+
+Take 1: 0.01881
+Take 2: 0.01827
+
+⚠️This recommendation is not a trading signal. You enter the trade if you agree with its parameters. The parameters of the trade can be adjusted by you based on your market view and risk management.

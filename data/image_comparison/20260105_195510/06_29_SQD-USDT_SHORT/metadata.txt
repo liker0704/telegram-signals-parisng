@@ -1,0 +1,44 @@
+Signal ID: 29
+Pair: SQD/USDT
+Direction: SHORT
+Created: 2025-12-24T14:43:59+00:00
+Source message ID: 9009
+Target message ID: 10521
+
+--- ORIGINAL TEXT ---
+#Идея SQD/USDT 4Ч
+
+SHORT 📉
+
+Беру актив в шорт, идет на разворот после небольшого пампа, тут довольно рисково, но попробую.
+
+Диапазон входа: 0.67-0.69$
+
+• TP1: $0.655
+• TP2: $0.623
+• TP3: $0.600
+ 
+SL: 0.7015$
+
+Риск в сделке 1%
+
+По ситуации буду давать update🔄
+
+--- TRANSLATED TEXT ---
+#Idea SQD/USDT 4H
+
+SHORT 📉
+
+I am taking the asset short, it is reversing after a small pump, it’s quite risky here, but I will try.
+
+Entry range: $0.67-0.69
+
+• TP1: $0.655
+• TP2: $0.623
+• TP3: $0.600
+
+SL: $0.7015
+
+Risk in the trade 1%
+
+I will provide updates based on the situation 🔄

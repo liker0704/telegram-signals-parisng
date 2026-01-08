@@ -1,0 +1,44 @@
+Signal ID: 32
+Pair: APR/USDT
+Direction: LONG
+Created: 2025-12-25T18:17:51+00:00
+Source message ID: 9170
+Target message ID: 10542
+
+--- ORIGINAL TEXT ---
+#Идея APR/USDT 4Ч
+
+LONG 📈
+
+Такая классная структура на активе, пробую на пробой с дальнейшим перекрытием имба.
+
+Диапазон входа: 0.135-0.1155$
+
+• TP1: $0.147
+• TP2: $0.163
+• TP3: $0.205
+ 
+SL: 0.1085$
+
+Риск в сделке 1%
+
+По ситуации буду давать update🔄
+
+--- TRANSLATED TEXT ---
+#Idea APR/USDT 4H
+
+LONG 📈
+
+Such a cool structure on the asset, I'm trying to break out with further coverage of the imba.
+
+Entry range: $0.135-0.1155
+
+• TP1: $0.147
+• TP2: $0.163
+• TP3: $0.205
+
+SL: $0.1085
+
+Risk in the trade 1%
+
+I will provide updates based on the situation🔄

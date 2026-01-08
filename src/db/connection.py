@@ -53,6 +53,7 @@ async def init_db() -> asyncpg.Pool:
                 min_size=2,
                 max_size=10,
                 command_timeout=60,
+                statement_cache_size=0,  # Required for pgbouncer transaction mode
             )
         else:
             # Fall back to individual variables (local Docker Compose)

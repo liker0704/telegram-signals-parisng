@@ -1,0 +1,44 @@
+Signal ID: 24
+Pair: LIGHT/USDT
+Direction: LONG
+Created: 2025-12-19T19:21:55+00:00
+Source message ID: 8791
+Target message ID: 10497
+
+--- ORIGINAL TEXT ---
+#Идея LIGHT/USDT 4Ч
+
+LONG 📈
+
+Пробуем лонг, тут довольно рисково, но, если план сработает, будет жирно. Есть 2 локальных хая и следующий ATH, ждем пробой.
+
+Диапазон входа: 2.17-2.11$
+
+• TP1: $2.21
+• TP2: $2.35
+• TP3: $2.55
+ 
+SL: 2.089$
+
+Риск в сделке 1%
+
+По ситуации буду давать update🔄
+
+--- TRANSLATED TEXT ---
+#Idea LIGHT/USDT 4H
+
+LONG 📈
+
+We are trying a long, it's quite risky here, but if the plan works out, it will be substantial. There are 2 local highs and the next ATH, waiting for a breakout.
+
+Entry range: $2.17-2.11
+
+• TP1: $2.21
+• TP2: $2.35
+• TP3: $2.55
+ 
+SL: $2.089
+
+Risk in the trade 1%
+
+I will provide updates based on the situation 🔄

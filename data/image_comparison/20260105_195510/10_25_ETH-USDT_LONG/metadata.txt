@@ -1,0 +1,35 @@
+Signal ID: 25
+Pair: ETH/USDT
+Direction: LONG
+Created: 2025-12-22T16:24:39+00:00
+Source message ID: 8842
+Target message ID: 10502
+
+--- ORIGINAL TEXT ---
+#идея
+
+Торговая идея на ETH/USDT 15М ЛОНГ
+  
+Актив снял ликвидность снизу, жду продолжение роста 
+
+Вход: 3044.98 - 3055.94
+Стоп: 3020.34
+
+Тейк 1: 3078.82
+
+
+⚠️Данная рекомендация не является торговым сигналом. вы заходите в сделку, если согласны с ее параметрами. параметры сделки могут быть скорректированы вами самостоятельно, исходя из вашего видения рынка и риск-менеджмент
+
+--- TRANSLATED TEXT ---
+#idea
+
+Trading idea for ETH/USDT 15M LONG
+
+The asset has removed liquidity from the bottom, I expect continued growth
+
+Entry: 3044.98 - 3055.94
+Stop: 3020.34
+
+Take 1: 3078.82
+
+⚠️This recommendation is not a trading signal. You enter the trade if you agree with its parameters. The parameters of the trade can be adjusted by you based on your market view and risk management.

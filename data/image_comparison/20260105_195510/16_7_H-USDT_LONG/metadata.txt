@@ -1,0 +1,44 @@
+Signal ID: 7
+Pair: H/USDT
+Direction: LONG
+Created: 2025-12-17T16:55:46+00:00
+Source message ID: 8702
+Target message ID: 10485
+
+--- ORIGINAL TEXT ---
+#Идея H/USDT 4Ч
+
+LONG 📈
+
+Берем в лонг на продолжение, снятие ближайшего хая.
+
+Диапазон входа: 0.105-0.098$
+
+• TP1: $0.117
+• TP2: $0.134
+• TP3: $0.167
+ 
+SL: 0.0977$
+
+Риск в сделке 1%
+
+По ситуации буду давать update🔄
+
+--- TRANSLATED TEXT ---
+#Idea H/USDT 4H
+
+LONG 📈
+
+We are going long for continuation, taking out the nearest high.
+
+Entry range: $0.105-0.098
+
+• TP1: $0.117
+• TP2: $0.134
+• TP3: $0.167
+
+SL: $0.0977
+
+Risk in the trade 1%
+
+I will provide updates based on the situation🔄

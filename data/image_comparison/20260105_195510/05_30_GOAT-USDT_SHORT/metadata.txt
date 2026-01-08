@@ -1,0 +1,36 @@
+Signal ID: 30
+Pair: GOAT/USDT
+Direction: SHORT
+Created: 2025-12-24T17:38:04+00:00
+Source message ID: 9112
+Target message ID: 10533
+
+--- ORIGINAL TEXT ---
+#идея
+
+Торговая идея на GOAT/USDT 15М ШОРТ📉
+  
+Актив снял ликвидность сверху, нарисовал модель входа, жду снижения
+
+Вход: 0.03237 - 0.03261
+Стоп: 0.03295
+
+Тейк 1: 0.03205
+Тейк 2: 0.03159
+
+⚠️Данная рекомендация не является торговым сигналом. вы заходите в сделку, если согласны с ее параметрами. параметры сделки могут быть скорректированы вами самостоятельно, исходя из вашего видения рынка и риск-менеджмент
+
+--- TRANSLATED TEXT ---
+#idea
+
+Trading idea on GOAT/USDT 15M SHORT📉
+
+The asset removed liquidity from the top, formed an entry model, waiting for a decline
+
+Entry: 0.03237 - 0.03261
+Stop: 0.03295
+
+Take 1: 0.03205
+Take 2: 0.03159
+
+⚠️This recommendation is not a trading signal. You enter the trade if you agree with its parameters. The parameters of the trade can be adjusted by you based on your market view and risk management.

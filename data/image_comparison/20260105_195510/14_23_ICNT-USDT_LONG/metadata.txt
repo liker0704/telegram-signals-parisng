@@ -1,0 +1,44 @@
+Signal ID: 23
+Pair: ICNT/USDT
+Direction: LONG
+Created: 2025-12-18T16:57:48+00:00
+Source message ID: 8762
+Target message ID: 10493
+
+--- ORIGINAL TEXT ---
+#Идея ICNT/USDT 4Ч
+
+LONG 📈
+
+Беру в лонг, перебили ATH, идем уверенно, объемы хорошие, должны выше закидывать.
+
+Диапазон входа: 0.49-0.455$
+
+• TP1: $0.513
+• TP2: $0.565
+• TP3: $0.623
+ 
+SL: 0.4495$
+
+Риск в сделке 1%
+
+По ситуации буду давать update🔄
+
+--- TRANSLATED TEXT ---
+#Idea ICNT/USDT 4H
+
+LONG 📈
+
+I am going long, we broke the ATH, moving confidently, volumes are good, we should push higher.
+
+Entry range: $0.49-0.455
+
+• TP1: $0.513
+• TP2: $0.565
+• TP3: $0.623
+ 
+SL: $0.4495
+
+Risk in the trade 1%
+
+I will provide updates based on the situation🔄

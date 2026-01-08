@@ -1,0 +1,44 @@
+Signal ID: 26
+Pair: ANIME/USDT
+Direction: SHORT
+Created: 2025-12-22T17:29:48+00:00
+Source message ID: 8843
+Target message ID: 10503
+
+--- ORIGINAL TEXT ---
+#Идея ANIME/USDT 4Ч
+
+SHORT 📉
+
+Ну что ребят, аниме 😂 У нас рисуется отличный медвежий дивер, плюс структура, которую мы уже шортили, объемы упали, так что можно ждать падение.
+
+Диапазон входа: 0.0096-0.01$
+
+• TP1: $0.00925
+• TP2: $0.00885
+• TP3: $0.00825
+ 
+SL: 0.01055$
+
+Риск в сделке 1%
+
+По ситуации буду давать update🔄
+
+--- TRANSLATED TEXT ---
+#Idea ANIME/USDT 4H
+
+SHORT 📉
+
+Well, guys, anime 😂 We have a great bearish divergence forming, plus the structure we have already shorted, volumes have dropped, so we can expect a decline.
+
+Entry range: $0.0096-0.01
+
+• TP1: $0.00925
+• TP2: $0.00885
+• TP3: $0.00825
+
+SL: $0.01055
+
+Risk in the trade 1%
+
+I will provide updates based on the situation 🔄
