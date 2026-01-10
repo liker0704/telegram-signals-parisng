@@ -56,6 +56,13 @@ async def handle_signal_update(event: NewMessage.Event) -> None:
                    source_msg_id=message.id)
         return
 
+    # Check if sender is in allowed_users list
+    if config.allowed_users_list:
+        if message.sender_id not in config.allowed_users_list:
+            logger.debug("Reply from non-allowed user, ignoring",
+                        sender_id=message.sender_id)
+            return
+
     update_id = None
     media_info = None
     edited_image_path = None

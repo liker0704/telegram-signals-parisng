@@ -8,7 +8,11 @@ import re
 
 def is_signal(text: str) -> bool:
     """
-    Check if text contains #Идея marker (case-insensitive).
+    Check if text contains signal marker (case-insensitive).
+
+    Supports:
+    - #Идея / #идея (Cyrillic)
+    - #Idea / #idea (Latin)
 
     Args:
         text: Message text to check
@@ -18,7 +22,8 @@ def is_signal(text: str) -> bool:
     """
     if not text:
         return False
-    return '#идея' in text.lower()
+    text_lower = text.lower()
+    return '#идея' in text_lower or '#idea' in text_lower
 
 
 def parse_trading_signal(text: str) -> dict:
