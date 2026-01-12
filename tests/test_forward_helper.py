@@ -256,3 +256,44 @@ class TestForwardOriginalMessage:
             # Verify timeout was passed correctly
             assert timeout_used == 42
             assert result == (77777, None)
+
+    @pytest.mark.asyncio
+    async def test_strips_promo_content_from_message(self):
+        """Should strip promo content from original text before sending."""
+        with patch('src.handlers.forward_helper.config') as mock_config, \
+             patch('src.handlers.forward_helper.get_publisher_client') as mock_get_client, \
+             patch('src.handlers.forward_helper.strip_promo_content') as mock_strip:
+
+            # Setup mocks
+            mock_config.FORWARD_GROUP_ID = -100123456789
+            mock_config.TIMEOUT_TELEGRAM_SEC = 15
+
+            original_text = "Test message with promo links"
+            cleaned_text = "Cleaned text"
+            mock_strip.return_value = cleaned_text
+
+            mock_publisher = AsyncMock()
+            mock_posted_msg = MagicMock()
+            mock_posted_msg.id = 44444
+            mock_publisher.send_message.return_value = mock_posted_msg
+            mock_get_client.return_value = mock_publisher
+
+            # Execute
+            result = await forward_original_message(
+                original_text=original_text,
+                media_path=None
+            )
+
+            # Verify strip_promo_content was called with original text
+            mock_strip.assert_called_once_with(original_text)
+
+            # Verify send_message received cleaned text
+            mock_publisher.send_message.assert_called_once_with(
+                entity=-100123456789,
+                message=cleaned_text,
+                file=None,
+                reply_to=None
+            )
+
+            # Verify correct return value
+            assert result == (44444, None)

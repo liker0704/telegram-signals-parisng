@@ -6,6 +6,7 @@ from typing import Optional, Tuple
 from src.config import config
 from src.telethon_setup import get_publisher_client
 from src.utils.logger import get_logger
+from src.utils.text_cleaner import strip_promo_content
 
 logger = get_logger(__name__)
 
@@ -41,11 +42,12 @@ async def forward_original_message(
 
     try:
         publisher = get_publisher_client()
+        cleaned_text = strip_promo_content(original_text)
 
         posted_msg = await asyncio.wait_for(
             publisher.send_message(
                 entity=config.FORWARD_GROUP_ID,
-                message=original_text,
+                message=cleaned_text,
                 file=media_path,
                 reply_to=reply_to_forward_id
             ),
