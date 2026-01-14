@@ -41,6 +41,9 @@ structlog==24.1.0
 pydantic>=2.9.0
 pydantic-settings>=2.1.0
 
+# YAML configuration
+PyYAML==6.0.2
+
 # Redis client (optional, for caching)
 redis==5.0.1
 aioredis==2.0.1

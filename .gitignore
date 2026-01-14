@@ -168,3 +168,6 @@ service-account.json
 *.tmp
 *.temp
 .cache/
+./tmp
+/tmp
+tmp/

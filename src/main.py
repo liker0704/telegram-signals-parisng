@@ -94,7 +94,7 @@ def register_handlers(reader_client) -> None:
         text = message.text or ''
 
         try:
-            if is_signal(text):
+            if is_signal(text, user_id=message.sender_id):
                 # New signal with #Идея marker
                 create_tracked_task(handle_new_signal(event), name=f"signal_{message.id}")
             elif message.is_reply:

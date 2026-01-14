@@ -28,6 +28,14 @@ def mock_event():
 
 
 @pytest.fixture
+def mock_config_allowed():
+    """Patch config with allowed_users_list containing test user IDs."""
+    with patch('src.handlers.update_handler.config') as mock_config:
+        mock_config.allowed_users_list = {111, 222}  # Test user IDs
+        yield mock_config
+
+
+@pytest.fixture
 def parent_signal_dict():
     """Create a mock parent signal record."""
     return {
@@ -47,7 +55,7 @@ class TestHandleSignalUpdateUserFiltering:
     """Tests for user filtering logic in signal updates."""
 
     @pytest.mark.asyncio
-    async def test_reply_from_same_user_allowed(self, mock_event, parent_signal_dict):
+    async def test_reply_from_same_user_allowed(self, mock_event, parent_signal_dict, mock_config_allowed):
         """Reply from same user as signal author should be allowed (processing continues)."""
         # Setup: sender_id == signal author
         mock_event.message.sender_id = 111
@@ -91,10 +99,10 @@ class TestHandleSignalUpdateUserFiltering:
             mock_update_signal_update.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_reply_from_different_user_ignored(self, mock_event, parent_signal_dict):
+    async def test_reply_from_different_user_ignored(self, mock_event, parent_signal_dict, mock_config_allowed):
         """Reply from different user should be ignored (returns early)."""
-        # Setup: sender_id != signal author
-        mock_event.message.sender_id = 222  # Different user
+        # Setup: sender_id != signal author (but in allowed_users)
+        mock_event.message.sender_id = 222  # Different user but in allowed_users
         parent_signal_dict['source_user_id'] = 111
 
         with patch('src.handlers.update_handler.db_find_update_by_source_msg', new_callable=AsyncMock) as mock_find_update, \
@@ -112,7 +120,7 @@ class TestHandleSignalUpdateUserFiltering:
             mock_insert_update.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_cache_hit_same_user_allowed(self, mock_event, parent_signal_dict):
+    async def test_cache_hit_same_user_allowed(self, mock_event, parent_signal_dict, mock_config_allowed):
         """Cache hit with matching user should allow processing."""
         mock_event.message.sender_id = 111
 
@@ -151,9 +159,9 @@ class TestHandleSignalUpdateUserFiltering:
             mock_insert_update.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_cache_hit_different_user_ignored(self, mock_event, parent_signal_dict):
+    async def test_cache_hit_different_user_ignored(self, mock_event, parent_signal_dict, mock_config_allowed):
         """Cache hit with different user should reject."""
-        mock_event.message.sender_id = 222  # Different user
+        mock_event.message.sender_id = 222  # Different user (but in allowed_users)
 
         with patch('src.handlers.update_handler.db_find_update_by_source_msg', new_callable=AsyncMock) as mock_find_update, \
              patch('src.handlers.update_handler.db_find_signal_by_source_msg', new_callable=AsyncMock) as mock_find_signal, \
@@ -170,7 +178,7 @@ class TestHandleSignalUpdateUserFiltering:
             mock_insert_update.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_cache_miss_checks_db_and_populates_cache(self, mock_event, parent_signal_dict):
+    async def test_cache_miss_checks_db_and_populates_cache(self, mock_event, parent_signal_dict, mock_config_allowed):
         """Cache miss should check DB and populate cache for future requests."""
         mock_event.message.sender_id = 111
 

@@ -48,7 +48,7 @@ Total tasks: 6
 - **Details**:
   - Глобальный `_active_flows: Dict[int, FlowInfo]`
   - `FlowInfo` dataclass с `user_id`, `timestamp`
-  - `FLOW_TTL = 259200  # 72 hours` (1 час, configurable)
+  - `FLOW_TTL = 259200` (72 часа, configurable через env)
   - `start_flow(signal_id: int, user_id: int) -> None`
   - `get_flow_owner(signal_id: int) -> Optional[int]`
   - `is_allowed(signal_id: int, user_id: int) -> bool`
@@ -119,7 +119,7 @@ Total tasks: 6
                         sender_id=message.sender_id,
                         flow_owner=cached_owner)
             return
-    elif signal_author and signal_author != message.sender_id:
+    elif signal_author and signal_author > 0 and signal_author != message.sender_id:
         # Cache miss - check DB and reject if mismatch
         logger.debug("Reply from different user (DB), ignoring",
                     signal_id=signal_id,
@@ -128,7 +128,8 @@ Total tasks: 6
         return
     else:
         # Cache miss but allowed - populate cache for future
-        if signal_author:
+        # Skip if source_user_id is 0 (anonymous/unknown sender)
+        if signal_author and signal_author > 0:
             start_flow(signal_id, signal_author)
     ```
 - **Depends on**: task-02, task-03
@@ -182,6 +183,7 @@ Total tasks: 6
   - Test: reply from same user as signal author → allowed
   - Test: reply from different user → ignored (returns early)
   - Test: reply when cache miss → checks DB, populates cache
+  - Test: reply to signal with source_user_id=0 → allowed (anonymous sender)
   - Test: reply to old signal without source_user_id → allowed (fallback)
   - Mock database queries и flow_tracker functions
 - **Depends on**: task-04

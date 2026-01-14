@@ -1,0 +1,57 @@
+# config/callers.yaml
+version: "1.0"
+
+# Fallback patterns for unknown user_id (combined: hashtag + bendi)
+fallback:
+  patterns:
+    - hashtag
+    - bendi
+
+# Known callers
+callers:
+  1018248833:  # @Mark_Tivan
+    name: "Mark Tivan"
+    pattern: hashtag
+
+  1155161257:  # @Daniil_Nikolaev
+    name: "Daniil Nikolaev"
+    pattern: hashtag
+
+  468446980:  # @nikita_grin_bendi
+    name: "Nikita Grin (Bendi)"
+    pattern: bendi
+
+  740952897:  # @kvaziroom
+    name: "Kvaziroom"
+    pattern: underscore
+
+  5575681795:  # @iskeib
+    name: "Iskeib"
+    pattern: simple
+
+# Pattern definitions
+patterns:
+  hashtag:
+    detect: '#[ИиIi]де[яЯа]|#[Ii]dea'
+    flags: IGNORECASE
+
+  bendi:
+    detect: '\*\*\s*[A-Z][A-Z0-9]*\s*[🟢🔴]\s*(LONG|SHORT)\s*\*\*'
+    flags: IGNORECASE
+    extract:
+      pair: '\*\*\s*([A-Z][A-Z0-9]*)'
+      direction: '(LONG|SHORT)'
+
+  underscore:
+    detect: '^([A-Z][A-Z0-9]*)_(long|short)\s*$'
+    flags: IGNORECASE|MULTILINE
+    extract:
+      pair: '^([A-Z][A-Z0-9]*)_'
+      direction: '_(long|short)'
+
+  simple:
+    detect: '^([A-Z][A-Z0-9]+)\s+(LONG|SHORT)\s*$'
+    flags: IGNORECASE|MULTILINE
+    extract:
+      pair: '^([A-Z][A-Z0-9]+)'
+      direction: '\s+(LONG|SHORT)'

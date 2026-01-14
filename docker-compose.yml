@@ -123,6 +123,8 @@ services:
       - logs_data:/app/logs
       # Temporary media storage
       - signal_media:/tmp/signals
+      # Configuration files
+      - ./config:/app/config:ro
     ports:
       - "${API_PORT:-8000}:${API_PORT:-8000}"  # Health check endpoint (if implemented)
     restart: unless-stopped

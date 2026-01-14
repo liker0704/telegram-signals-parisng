@@ -39,15 +39,18 @@ async def main():
     print(f"Source group: {source_group_id}")
     print(f"Allowed users: {allowed_users}")
 
-    # Find last #идея message
-    print("\nSearching for last #идея signal...")
+    # Find second-to-last #идея message
+    print("\nSearching for second-to-last #идея signal...")
     signal_message = None
+    found_count = 0
 
-    async for message in reader.iter_messages(source_group_id, limit=100):
+    async for message in reader.iter_messages(source_group_id, limit=200):
         if message.sender_id in allowed_users and message.text:
             if "#идея" in message.text.lower() or "#idea" in message.text.lower():
-                signal_message = message
-                break
+                found_count += 1
+                if found_count == 2:  # Second signal
+                    signal_message = message
+                    break
 
     if not signal_message:
         print("No #идея signal found in last 100 messages")

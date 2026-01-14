@@ -89,7 +89,7 @@ async def handle_new_signal(event: NewMessage.Event) -> None:
         await db_update_signal(signal_id, {'status': 'PROCESSING'})
 
         # Step 3: Parse structured fields
-        parsed_fields = parse_trading_signal(message.text or '')
+        parsed_fields = parse_trading_signal(message.text or '', user_id=message.sender_id)
         await db_update_signal(signal_id, {
             'pair': parsed_fields.get('pair'),
             'direction': parsed_fields.get('direction'),

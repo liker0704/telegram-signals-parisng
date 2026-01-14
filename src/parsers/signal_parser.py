@@ -4,29 +4,43 @@ Parse trading signals to extract structured fields using regex.
 """
 
 import re
+from src.callers_config import CallersConfig
+
+# Bendi format: **TICKER 🟢LONG** or **TICKER 🔴SHORT** (may span multiple lines)
+# Examples: "**FF\n🟢LONG**", "**BTC 🔴SHORT**"
+BENDI_PATTERN = re.compile(
+    r'\*\*\s*([A-Z][A-Z0-9]*)\s*[🟢🔴]\s*(LONG|SHORT)\s*\*\*',
+    re.IGNORECASE
+)
 
 
-def is_signal(text: str) -> bool:
+def is_signal(text: str, user_id: int | None = None) -> bool:
     """
     Check if text contains signal marker (case-insensitive).
 
-    Supports:
-    - #Идея / #идея (Cyrillic)
-    - #Idea / #idea (Latin)
+    Uses CallersConfig to get caller-specific detection patterns.
+    Falls back to hashtag pattern if user_id is None.
 
     Args:
         text: Message text to check
+        user_id: Optional Telegram user ID for caller-specific patterns
 
     Returns:
         True if text contains signal marker, False otherwise
     """
     if not text:
         return False
-    text_lower = text.lower()
-    return '#идея' in text_lower or '#idea' in text_lower
+
+    config = CallersConfig.get_instance()
+    patterns = config.get_detection_patterns(user_id)
+
+    for pattern in patterns:
+        if pattern.search(text):
+            return True
+    return False
 
 
-def parse_trading_signal(text: str) -> dict:
+def parse_trading_signal(text: str, user_id: int | None = None) -> dict:
     """
     Extract structured trading fields from signal text.
     All fields are optional - return None for missing fields.
@@ -38,6 +52,7 @@ def parse_trading_signal(text: str) -> dict:
 
     Args:
         text: Signal message text to parse
+        user_id: Optional Telegram user ID for caller-specific extraction patterns
 
     Returns:
         dict with keys:
@@ -68,23 +83,57 @@ def parse_trading_signal(text: str) -> dict:
 
     fields = {}
 
-    # Extract Pair: BTC/USDT, XION/USDT, YBU/USDT, etc.
-    pair_match = re.search(r'\b([A-Z][A-Z0-9]*\/[A-Z][A-Z0-9]*)\b', text)
-    fields['pair'] = pair_match.group(1) if pair_match else None
+    # Try caller-specific extraction patterns first
+    config = CallersConfig.get_instance()
+    extract_patterns = config.get_extraction_patterns(user_id)
 
-    # Extract Direction: LONG/SHORT (English) or ЛОНГ/ШОРТ (Russian)
-    # Normalize to uppercase English
-    direction_match = re.search(r'\b(LONG|SHORT|ЛОНГ|ШОРТ)\b', text, re.IGNORECASE)
-    if direction_match:
-        direction = direction_match.group(1).upper()
-        # Normalize Russian to English
-        if direction in ('ЛОНГ', 'лонг'):
-            direction = 'LONG'
-        elif direction in ('ШОРТ', 'шорт'):
-            direction = 'SHORT'
-        fields['direction'] = direction
-    else:
-        fields['direction'] = None
+    if extract_patterns:
+        # Try to extract pair using caller-specific pattern
+        pair_pattern = extract_patterns.get('pair')
+        if pair_pattern:
+            pair_match = pair_pattern.search(text)
+            if pair_match:
+                # Extract ticker as-is (preserve original behavior)
+                fields['pair'] = pair_match.group(1).upper()
+
+        # Try to extract direction using caller-specific pattern
+        direction_pattern = extract_patterns.get('direction')
+        if direction_pattern:
+            direction_match = direction_pattern.search(text)
+            if direction_match:
+                direction = direction_match.group(1).upper()
+                # Normalize Russian to English
+                if direction in ('ЛОНГ', 'лонг'):
+                    direction = 'LONG'
+                elif direction in ('ШОРТ', 'шорт'):
+                    direction = 'SHORT'
+                fields['direction'] = direction
+
+    # Fall back to existing extraction logic if no match
+    if 'pair' not in fields:
+        # Extract Pair: BTC/USDT, XION/USDT, YBU/USDT, etc.
+        pair_match = re.search(r'\b([A-Z][A-Z0-9]*\/[A-Z][A-Z0-9]*)\b', text)
+        if pair_match:
+            fields['pair'] = pair_match.group(1)
+        else:
+            # Try Bendi format: **TICKER 🟢LONG** - extract just the ticker
+            bendi_match = BENDI_PATTERN.search(text)
+            fields['pair'] = bendi_match.group(1).upper() if bendi_match else None
+
+    if 'direction' not in fields:
+        # Extract Direction: LONG/SHORT (English) or ЛОНГ/ШОРТ (Russian)
+        # Normalize to uppercase English
+        direction_match = re.search(r'\b(LONG|SHORT|ЛОНГ|ШОРТ)\b', text, re.IGNORECASE)
+        if direction_match:
+            direction = direction_match.group(1).upper()
+            # Normalize Russian to English
+            if direction in ('ЛОНГ', 'лонг'):
+                direction = 'LONG'
+            elif direction in ('ШОРТ', 'шорт'):
+                direction = 'SHORT'
+            fields['direction'] = direction
+        else:
+            fields['direction'] = None
 
     # Extract Timeframe: 15M, 5M, 1H, 4H, D, W (both English M and Russian М)
     timeframe_match = re.search(r'\b(\d+\s*[MМmм]|\d+\s*[Hh]|[Dd]|[Ww])\b', text)
