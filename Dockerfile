@@ -59,6 +59,7 @@ USER root
 COPY --chown=signalbot:signalbot src/ ./src/
 COPY --chown=signalbot:signalbot migrations/ ./migrations/
 COPY --chown=signalbot:signalbot tests/ ./tests/
+COPY --chown=signalbot:signalbot config/ ./config/
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
