@@ -3,7 +3,6 @@ Callers Configuration Loader
 Singleton class to load and manage YAML config for signal callers.
 """
 
-import os
 import re
 import logging
 from pathlib import Path
