@@ -57,7 +57,8 @@ The Telegram Signal Translator Bot is an asynchronous backend service that bridg
 | **Reader Client** | Telethon 1.36+ (MTProto) | Listens to source group for new signals |
 | **Publisher Client** | Telethon 1.36+ (MTProto) | Posts translated signals to target group |
 | **Translation Engine** | Google Gemini 2.0 Flash | Translates Russian text to English |
-| **OCR Engine** | Gemini Vision API | Extracts text from trading chart images |
+| **Vision API** | Multi-provider (Gemini/OpenAI/Anthropic) | Extracts text from images with fallback |
+| **Image Editing API** | Multi-provider (Gemini/OpenAI) | Generates edited images with translations |
 | **Fallback Translator** | Google Translate API | Fallback when Gemini fails |
 | **Database** | PostgreSQL 15+ (asyncpg) | Stores signals, mappings, cache |
 | **Cache** | Redis 7+ | Session persistence, translation cache |
@@ -270,72 +271,168 @@ def restore_trading_terms(text: str) -> str:
     return text
 ```
 
-#### 2.2.3 OCR Engine (`src/ocr/gemini_ocr.py`)
+#### 2.2.3 Image Processing Pipeline (`src/ocr/`, `src/vision/`, `src/image_editing/`)
 
-Extracts text from trading chart images using Gemini Vision:
+**Architecture Overview**:
+
+The image processing pipeline uses a two-stage approach:
+
+1. **Stage 1: Vision API (Text Extraction)** - Extract Russian text from images using multi-provider vision models
+2. **Stage 2: Image Editing API (Image Generation)** - Generate new image with translated English text
+
+**Stage 1: Vision API (Text Extraction)**
+
+Location: `src/vision/`
+
+Extracts text from trading chart images using a multi-provider architecture with automatic fallback:
 
 ```python
-async def translate_image_ocr(image_path: str) -> str:
-    """Extract and translate text from trading chart image"""
-    import google.generativeai as genai
+from src.vision import VisionProviderFactory, FallbackChain
 
-    genai.configure(api_key=config.GEMINI_API_KEY)
-    model = genai.GenerativeModel(config.GEMINI_MODEL)
+# Create fallback chain from config
+provider = VisionProviderFactory.from_env_config()
 
-    # Upload image file
-    file = genai.upload_file(image_path)
+# Or use fallback chain explicitly
+from src.vision.fallback import FallbackChain
+chain = FallbackChain(
+    providers=[gemini_provider, openai_provider, anthropic_provider],
+    timeout_sec=30,
+    max_retries=1
+)
 
-    prompt = """Extract ALL visible text from this trading chart/screenshot image.
-If text is visible, translate it to English.
-Preserve numbers, currency symbols, and ticker symbols (e.g., BTC/USDT, $, %).
-If no readable text is found on the image, return 'NO_TEXT_FOUND'.
+# Extract text from image
+result = await chain.extract_text(pil_image)
+# Returns: VisionResult(extractions=[TextExtraction(original="Тест", translated="Test", ...)])
+```
 
-Return in format:
-EXTRACTED: [original language text]
-TRANSLATED: [english translation]
+**Supported Providers** (via `VisionProviderFactory`):
 
-If no text found:
-EXTRACTED: (none)
-TRANSLATED: (none)"""
+- `gemini`: Google Gemini 2.0 Flash (primary)
+- `openai`: OpenAI GPT-4o Vision (fallback)
+- `anthropic`: Anthropic Claude 4 Sonnet (fallback)
 
-    response = model.generate_content([prompt, file])
+**Key Components**:
 
-    # Parse structured response
-    text = response.text
-    lines = text.split('\n')
+- `VisionProviderFactory`: Factory for creating vision providers from config
+- `FallbackChain`: Orchestrates fallback between multiple providers with retry logic
+- `VisionProvider` (ABC): Abstract base class for all vision providers
+- `GeminiVisionProvider`, `OpenAIVisionProvider`, `AnthropicVisionProvider`: Provider implementations
 
-    extracted = None
-    translated = None
-    for line in lines:
-        if line.startswith('EXTRACTED:'):
-            extracted = line.replace('EXTRACTED:', '').strip()
-        elif line.startswith('TRANSLATED:'):
-            translated = line.replace('TRANSLATED:', '').strip()
+**Stage 2: Image Editing API (Image Generation)**
 
-    if extracted == '(none)' or extracted == 'NO_TEXT_FOUND':
-        return None
+Location: `src/image_editing/`
 
-    return f"[On chart]: {translated}" if translated else None
+Generates new image with translated text using AI image editing:
+
+```python
+from src.image_editing import ImageEditorFactory
+
+# Get editor from config
+editor = ImageEditorFactory.get_editor_with_fallback()
+
+# Edit image with translations
+result = await editor.edit_image(
+    image_path="chart.jpg",
+    replacements=[
+        {"original": "Цена", "translated": "Price"},
+        {"original": "Объем", "translated": "Volume"}
+    ]
+)
+# Returns: EditResult(edited_image_path="chart_edited.jpg", success=True)
+```
+
+**Supported Editors** (via `ImageEditorFactory`):
+
+- `gemini`: Google Gemini Image Editing API (primary)
+- `openai`: OpenAI DALL-E / GPT-4o with Vision (fallback)
+
+**Key Components**:
+
+- `ImageEditorFactory`: Factory for creating image editors from config
+- `ImageEditor` (ABC): Abstract base class for all image editors
+- `GeminiImageEditor`, `OpenAIImageEditor`: Editor implementations
+
+**Main Entry Point** (`src/ocr/gemini_ocr.py`):
+
+```python
+async def process_image(image_path: str) -> Optional[str]:
+    """
+    Process image: extract Russian text and generate English version.
+
+    Pipeline:
+    1. Vision API extracts Russian text
+    2. Image Editing API generates new image with English text
+
+    Args:
+        image_path: Path to original image
+
+    Returns:
+        Path to edited image, or None if editing failed (use original as fallback)
+    """
+    from src.ocr.image_editor import edit_image_text
+
+    # Generate output path
+    base, ext = os.path.splitext(image_path)
+    output_path = f"{base}_edited{ext}"
+
+    # Run vision + editing pipeline
+    edited_path = await edit_image_text(image_path, output_path)
+
+    return edited_path  # None if failed
 ```
 
 **Configuration**:
-- `GEMINI_API_KEY`: Google AI API key
-- `GEMINI_MODEL`: Model name (default: `gemini-2.0-flash`)
-- `TIMEOUT_GEMINI_SEC`: Max API timeout (default: 30s)
+
+```env
+# Vision API
+VISION_PROVIDER=gemini
+VISION_FALLBACK_PROVIDERS=openai,anthropic
+VISION_TIMEOUT_SEC=30
+VISION_MAX_RETRIES=1
+
+# Image Editing
+IMAGE_EDITOR=gemini
+IMAGE_EDITOR_FALLBACK=openai
+
+# Provider API Keys
+GEMINI_API_KEY=AIzaSy...
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+**Error Handling & Fallback**:
+
+Both stages use automatic fallback on failure:
+
+```
+Vision:   Gemini → OpenAI → Anthropic
+Editing:  Gemini → OpenAI
+```
+
+If all providers fail, the system falls back to posting the original image without translation.
+
+**Legacy Code**:
+
+- `src/ocr/gemini_ocr.py::translate_image_ocr()` - DEPRECATED, use `process_image()` instead
+- Direct Gemini SDK usage - Replaced by multi-provider architecture
+
+**Architecture Details**:
+
+See `docs/architecture/adr-0001-multi-provider-vision.md` for detailed design decisions and provider selection rationale.
 
 **Parallel Processing**:
 
-Text translation and image OCR run concurrently:
+Text translation and image processing run concurrently:
 
 ```python
 translation_result = await asyncio.gather(
     translate_text_with_fallback(message.text),
-    translate_image_ocr(media_info['local_path']) if media_info else asyncio.sleep(0),
+    process_image(media_info['local_path']) if media_info else asyncio.sleep(0),
     return_exceptions=True
 )
 
 translated_text = translation_result[0]
-image_ocr = translation_result[1] if len(translation_result) > 1 else None
+edited_image_path = translation_result[1] if len(translation_result) > 1 else None
 ```
 
 #### 2.2.4 Media Downloader (`src/media/downloader.py`)
@@ -398,15 +495,10 @@ async def download_and_process_media(client, message, entity_id, is_update=False
 Builds final English message for posting:
 
 ```python
-def build_final_message(translated_text: str, image_ocr: str, parsed_fields: dict) -> str:
+def build_final_message(translated_text: str, parsed_fields: dict) -> str:
     """Construct final English message to post to target group"""
-    parts = [translated_text]
-
-    # Append OCR results if available
-    if image_ocr:
-        parts.append(f"\n\n_Chart OCR:_\n{image_ocr}")
-
-    return '\n'.join(parts)
+    # Just return translated text - image is already translated separately
+    return translated_text
 ```
 
 **Output Example**:
@@ -420,10 +512,9 @@ SL: 64000
 Risk: 2%
 
 Test signal for verification
-
-_Chart OCR:_
-[On chart]: BTCUSDT 15m, RSI: 45.2, MACD: Bullish divergence
 ```
+
+**Note**: Chart text is now translated directly on the image via the Image Editing API, so no separate OCR text is appended to the message. The edited image with English text is attached to the message.
 
 #### 2.2.6 Database Manager (`src/db/`)
 
@@ -596,25 +687,31 @@ target_update_msg_id = posted_msg.id
         │
         ▼
 
-6. PARALLEL TRANSLATION + OCR
+6. PARALLEL TRANSLATION + IMAGE PROCESSING
    │
    ├─> asyncio.gather([
    │       translate_text_with_fallback(text),     # 3-8 seconds
-   │       translate_image_ocr(image_path)         # 2-5 seconds
+   │       process_image(image_path)               # 5-10 seconds (Vision + Editing)
    │   ])
    │
-   ├─> Gemini API: Translate Russian → English
-   ├─> Preserve: TP1, TP2, TP3, SL, LONG, SHORT, tickers
-   ├─> Fallback: Google Translate if Gemini fails
-   └─> Return: (translated_text, image_ocr_text)
+   ├─> Text: Gemini API → Translate Russian → English
+   │   └─> Preserve: TP1, TP2, TP3, SL, LONG, SHORT, tickers
+   │   └─> Fallback: Google Translate if Gemini fails
+   │
+   ├─> Image: Two-stage pipeline
+   │   ├─> Stage 1: Vision API (Gemini/OpenAI/Anthropic)
+   │   │   └─> Extract Russian text from image
+   │   └─> Stage 2: Image Editing API (Gemini/OpenAI)
+   │       └─> Generate new image with English text
+   │
+   └─> Return: (translated_text, edited_image_path)
         │
         ▼
 
 7. MESSAGE FORMATTING
    │
-   ├─> build_final_message(translated_text, image_ocr, parsed_fields)
-   ├─> Combine text + OCR results
-   └─> Format for target group
+   ├─> build_final_message(translated_text, parsed_fields)
+   └─> Format for target group (no OCR text, image is already translated)
         │
         ▼
 
@@ -623,7 +720,7 @@ target_update_msg_id = posted_msg.id
    ├─> client_publisher.send_message(
    │       entity=TARGET_GROUP_ID,
    │       message=final_message,
-   │       file=image_path
+   │       file=edited_image_path or original_image_path  # Use edited if available
    │   )
    ├─> Wait for confirmation
    └─> Return: target_message_id (e.g., 7890)
@@ -636,7 +733,7 @@ target_update_msg_id = posted_msg.id
    │       target_message_id=7890,
    │       target_chat_id=TARGET_GROUP_ID,
    │       translated_text=...,
-   │       image_ocr_text=...,
+   │       image_local_path=...,           # Path to edited image
    │       status='POSTED',
    │       processed_at=NOW()
    │   WHERE id=42
@@ -647,10 +744,10 @@ target_update_msg_id = posted_msg.id
 
 10. CLEANUP
    │
-   ├─> Delete local media file: os.remove(image_path)
+   ├─> Delete local media files: os.remove(original_image_path, edited_image_path)
    └─> Free disk space
 
-   ✅ COMPLETE (Total time: ~6-12 seconds)
+   ✅ COMPLETE (Total time: ~8-15 seconds with image editing)
 ```
 
 ### 3.2 Reply Handling Flow (Signal Updates)
@@ -1509,7 +1606,9 @@ async def call_gemini_with_circuit(text):
 
 **Goal**: <60 seconds end-to-end (source message posted → target message posted)
 
-**Actual Performance**: 6-12 seconds (well under target)
+**Actual Performance**:
+- Text-only signals: 6-12 seconds
+- Signals with images: 8-20 seconds (includes Vision API + Image Editing API)
 
 ### 7.2 Latency Breakdown
 
@@ -1531,15 +1630,18 @@ Operation                          | Typical Time  | Notes
 ────────────────────────────────────────────────────────────────────────────
 7. PARALLEL OPERATIONS:
    ├─ Text Translation (Gemini)    | 3-8s          | API latency
-   └─ Image OCR (Gemini Vision)    | 2-5s          | Runs concurrently
+   └─ Image Processing             | 5-10s         | Runs concurrently
+      ├─ Vision API (extract)      | 2-4s          | Multi-provider with fallback
+      └─ Image Editing API (gen)   | 3-6s          | Generate edited image
 ────────────────────────────────────────────────────────────────────────────
 8. Message Formatting              | 5-10ms        | String concatenation
-9. Post to Target (Publisher)      | 500ms-1s      | Telethon send_message
+9. Post to Target (Publisher)      | 500ms-1s      | Telethon send_message (edited image)
 10. DB Update (mapping + status)   | 30-60ms       | asyncpg UPDATE
-11. Cleanup (delete local file)    | 10-20ms       | os.remove()
+11. Cleanup (delete local files)   | 10-20ms       | os.remove() original + edited
 ────────────────────────────────────────────────────────────────────────────
-TOTAL (typical):                   | 6-12 seconds  | ✅ Well under target
-TOTAL (worst case):                | 15-20 seconds | Network delays
+TOTAL (text-only):                 | 6-12 seconds  | ✅ Well under target
+TOTAL (with images):               | 8-20 seconds  | ✅ Still under target
+TOTAL (worst case):                | 20-30 seconds | Network delays + fallbacks
 ────────────────────────────────────────────────────────────────────────────
 ```
 
@@ -1548,16 +1650,16 @@ TOTAL (worst case):                | 15-20 seconds | Network delays
 **1. Parallel API Calls**:
 
 ```python
-# Run translation + OCR concurrently
+# Run translation + image processing concurrently
 results = await asyncio.gather(
     translate_text_with_fallback(text),     # 3-8s
-    translate_image_ocr(image_path),        # 2-5s
+    process_image(image_path),              # 5-10s (Vision + Editing)
     return_exceptions=True
 )
-# Total time: max(3-8s, 2-5s) = 3-8s (NOT 5-13s sequential)
+# Total time: max(3-8s, 5-10s) = 5-10s (NOT 8-18s sequential)
 ```
 
-**Benefit**: Saves 2-5 seconds per signal
+**Benefit**: Saves 3-8 seconds per signal with images
 
 **2. Translation Cache**:
 
@@ -1706,9 +1808,23 @@ PUBLISHER_SESSION_FILE=publisher.session
 SOURCE_GROUP_ID=-100123456789
 TARGET_GROUP_ID=-100987654321
 
-# === Gemini API ===
+# === Vision API (Multi-Provider) ===
+VISION_PROVIDER=gemini
+VISION_FALLBACK_PROVIDERS=openai,anthropic
+VISION_TIMEOUT_SEC=30
+VISION_MAX_RETRIES=1
+
+# === Image Editing API ===
+IMAGE_EDITOR=gemini
+IMAGE_EDITOR_FALLBACK=openai
+
+# === Provider API Keys ===
 GEMINI_API_KEY=AIzaSy...
 GEMINI_MODEL=gemini-2.0-flash
+OPENAI_API_KEY=sk-...
+OPENAI_VISION_MODEL=gpt-4o
+ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_VISION_MODEL=claude-sonnet-4-20250514
 
 # === Database ===
 POSTGRES_USER=postgres
@@ -1788,6 +1904,15 @@ SELECT * FROM signals ORDER BY created_at DESC LIMIT 10;
 - Check: Fallback to Google Translate working (check logs)
 - Test: Send simple text to Gemini API manually
 
+**Issue**: Image processing fails
+- Check: VISION_PROVIDER is configured correctly (gemini/openai/anthropic)
+- Check: Provider API keys are valid (GEMINI_API_KEY, OPENAI_API_KEY, ANTHROPIC_API_KEY)
+- Check: Fallback chain is working (check logs for "Trying vision provider")
+- Check: IMAGE_EDITOR is configured (gemini/openai)
+- Check: IMAGE_EDITOR_FALLBACK is set
+- Test: Run vision provider directly with test image
+- Fallback: If all fail, original image will be posted
+
 **Issue**: Posting fails
 - Check: Publisher account in TARGET_GROUP
 - Check: Account has write permissions (not restricted)
@@ -1808,7 +1933,14 @@ SELECT * FROM signals ORDER BY created_at DESC LIMIT 10;
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2025-12-01
+**Document Version**: 2.0
+**Last Updated**: 2026-01-16
 **Project**: Telegram Signal Translator Bot
 **Repository**: https://github.com/liker/telegram-signals-parisng
+
+**Major Changes in v2.0**:
+- Replaced single Gemini OCR with multi-provider Vision API architecture
+- Added Image Editing API for generating translated images
+- Introduced `VisionProviderFactory` and `ImageEditorFactory` with fallback chains
+- Deprecated `translate_image_ocr()` in favor of `process_image()`
+- See `docs/architecture/adr-0001-multi-provider-vision.md` for architectural decision details

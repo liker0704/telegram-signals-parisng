@@ -32,7 +32,11 @@
 | `src/translators/gemini.py` | Gemini API text translation | `google.generativeai` |
 | `src/translators/google.py` | Google Translate fallback | `google.cloud.translate_v2` |
 | `src/translators/fallback.py` | Translation orchestration with fallback logic | `gemini`, `google` |
-| `src/ocr/gemini_ocr.py` | Extract and translate text from images using Gemini Vision | `google.generativeai` |
+| `src/ocr/gemini_ocr.py` | Main image processing entry point (orchestrates vision + editing) | `vision`, `image_editing` |
+| `src/ocr/image_editor.py` | Two-stage pipeline: vision extraction + image editing | `vision`, `image_editing`, `PIL` |
+| `src/vision/base.py` | Abstract base class and data models for vision providers | `PIL`, `abc` |
+| `src/vision/fallback.py` | Multi-provider fallback chain for vision operations | `vision.base` |
+| `src/image_editing/base.py` | Abstract base class and data models for image editors | `PIL`, `abc` |
 | `src/media/downloader.py` | Download and store Telegram media files | `telethon`, `os`, `db` |
 | `src/parsers/signal_parser.py` | Extract structured trading fields via regex | `re` |
 | `src/formatters/message.py` | Build final translated messages, restore trading terms | `typing` |
@@ -208,41 +212,421 @@ async def google_translate(text: str) -> str:
 
 ---
 
-### 2.3 OCR
+### 2.3 Image Processing (OCR + Editing)
 
 #### `src/ocr/gemini_ocr.py`
 
 ```python
-async def translate_image_ocr(image_path: str) -> Optional[str]:
+async def process_image(image_path: str) -> Optional[str]:
     """
-    Extract and translate text from trading chart images.
+    Process image: edit Russian text to English using multi-provider vision + image editing.
 
-    Uses Gemini Vision API to:
-    1. Extract visible text (chart labels, indicators, notes)
-    2. Translate extracted text to English
-    3. Preserve numbers and tickers
+    This is the main entry point for image processing. It orchestrates a two-stage pipeline:
+    - Stage 1: Vision provider extracts and translates text (with fallback chain)
+    - Stage 2: Image editor generates new image with English text
+
+    Replaces the old OCR-only approach. Now we regenerate the image with translated text
+    instead of just extracting it.
 
     Args:
-        image_path: Local file path to downloaded image
+        image_path: Path to the original image
 
     Returns:
-        Formatted string: "[On chart]: <translated_text>"
-        Returns None if no text found or OCR fails
+        Path to edited image with English text, or None if editing failed
+        (caller should use original image as fallback)
 
     Raises:
-        google.api_core.exceptions.GoogleAPIError: On API errors
-        FileNotFoundError: If image_path does not exist
+        Does not raise. Returns None on errors.
+
+    Side Effects:
+        - Creates edited image file with "_edited" suffix
+        - Original file is preserved
 
     Example:
-        >>> ocr_text = await translate_image_ocr("/tmp/signals/chart123.jpg")
-        >>> print(ocr_text)
-        "[On chart]: Resistance at 0.98, Support at 0.92"
+        >>> edited_path = await process_image("/tmp/signals/chart123.jpg")
+        >>> if edited_path:
+        ...     print(f"Edited image: {edited_path}")
+        ...     # Returns: "/tmp/signals/chart123_edited.jpg"
+        ... else:
+        ...     print("Editing failed, use original")
     """
 ```
 
 ---
 
-### 2.4 Media
+#### `src/ocr/image_editor.py`
+
+```python
+async def edit_image_text(image_path: str, output_path: str) -> Optional[str]:
+    """
+    Edit image: translate Russian text to English using vision + image editing.
+
+    Two-stage pipeline:
+    - Stage 1: Vision provider extracts and translates text (with fallback chain)
+    - Stage 2: Image editor generates new image with translations
+
+    Args:
+        image_path: Path to original image
+        output_path: Path to save edited image
+
+    Returns:
+        Path to edited image, or None if editing failed
+
+    Raises:
+        Does not raise. Returns None on errors.
+
+    Side Effects:
+        - Validates image file (security check)
+        - Upscales small images (<1024px) for better OCR accuracy
+        - Saves edited image to output_path
+
+    Example:
+        >>> edited = await edit_image_text(
+        ...     "/tmp/chart.jpg",
+        ...     "/tmp/chart_edited.jpg"
+        ... )
+        >>> if edited:
+        ...     print("Success!")
+    """
+
+async def extract_text_from_image(image: Image.Image) -> List[Dict[str, str]]:
+    """
+    Extract and translate text from image using vision fallback chain.
+
+    Uses multi-provider vision system (Gemini, OpenAI, etc.) with automatic
+    fallback if primary provider fails.
+
+    Args:
+        image: PIL Image object
+
+    Returns:
+        List of dicts with 'russian' and 'english' keys
+        Example: [{'russian': 'Вход', 'english': 'Entry'}]
+
+    Raises:
+        Does not raise. Returns empty list on errors.
+
+    Example:
+        >>> from PIL import Image
+        >>> img = Image.open("/tmp/chart.jpg")
+        >>> translations = await extract_text_from_image(img)
+        >>> for t in translations:
+        ...     print(f"{t['russian']} -> {t['english']}")
+    """
+```
+
+---
+
+### 2.4 Vision Providers
+
+#### `src/vision/base.py`
+
+```python
+class VisionProvider(ABC):
+    """
+    Abstract base class for vision/OCR providers.
+
+    All vision providers (Gemini, OpenAI, Tesseract) must implement this interface.
+    """
+
+    @abstractmethod
+    async def extract_text(
+        self,
+        image: Image.Image,
+        prompt: Optional[str] = None
+    ) -> VisionResult:
+        """
+        Extract and optionally translate text from an image (async).
+
+        Args:
+            image: PIL Image object to extract text from
+            prompt: Optional custom prompt for the vision model
+
+        Returns:
+            VisionResult containing:
+                - extractions: List[TextExtraction] with original/translated text
+                - provider_name: Name of provider used
+                - latency_ms: Processing time
+                - raw_response: Optional raw API response
+
+        Raises:
+            VisionProviderError: If extraction fails
+
+        Example:
+            >>> from PIL import Image
+            >>> provider = VisionProviderFactory.get_provider('gemini')
+            >>> img = Image.open("chart.jpg")
+            >>> result = await provider.extract_text(img)
+            >>> print(result.extractions[0].translated)
+            "Entry: 0.98-0.9283"
+        """
+        pass
+
+    def extract_text_sync(
+        self,
+        image: Image.Image,
+        prompt: Optional[str] = None
+    ) -> VisionResult:
+        """
+        Synchronous wrapper for extract_text.
+
+        Runs async extract_text in a new event loop. Useful for sync contexts.
+
+        Args:
+            image: PIL Image object to extract text from
+            prompt: Optional custom prompt for the vision model
+
+        Returns:
+            VisionResult (same as async version)
+
+        Raises:
+            VisionProviderError: If extraction fails
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Get the name of this vision provider (e.g., 'gemini', 'openai')."""
+        pass
+
+    @property
+    @abstractmethod
+    def is_available(self) -> bool:
+        """Check if this provider is available and configured."""
+        pass
+```
+
+---
+
+#### `src/vision/base.py` - Data Classes
+
+```python
+@dataclass
+class TextExtraction:
+    """
+    Represents a single text extraction from an image.
+
+    Attributes:
+        original: The original text extracted from the image
+        translated: The translated version of the text
+        confidence: Confidence score (0.0 to 1.0), defaults to 1.0
+    """
+    original: str
+    translated: str
+    confidence: float = 1.0
+
+@dataclass
+class VisionResult:
+    """
+    Result from a vision provider's text extraction operation.
+
+    Attributes:
+        extractions: List[TextExtraction] with original/translated text pairs
+        provider_name: Name of the vision provider that generated this result
+        raw_response: Optional raw response from provider API (for debugging)
+        latency_ms: Time taken for extraction in milliseconds
+    """
+    extractions: List[TextExtraction]
+    provider_name: str
+    raw_response: Optional[str] = None
+    latency_ms: float = 0.0
+
+    @property
+    def has_text(self) -> bool:
+        """Check if any text was extracted."""
+        pass
+
+    @property
+    def combined_translated(self) -> str:
+        """Get all translated texts combined with newlines."""
+        pass
+
+    @property
+    def average_confidence(self) -> float:
+        """Calculate average confidence across all extractions."""
+        pass
+```
+
+---
+
+#### `src/vision/fallback.py`
+
+```python
+class FallbackChain:
+    """
+    Orchestrates fallback between multiple vision providers.
+
+    Tries providers in order until one succeeds. Supports retries per provider
+    and timeout configuration.
+    """
+
+    def __init__(
+        self,
+        providers: List[VisionProvider],
+        timeout_sec: float = 30.0,
+        max_retries: int = 1
+    ):
+        """
+        Initialize FallbackChain.
+
+        Args:
+            providers: List of vision providers to try in order
+            timeout_sec: Timeout for each provider attempt (default: 30s)
+            max_retries: Max retries per provider before trying next (default: 1)
+        """
+        pass
+
+    async def extract_text(
+        self,
+        image: Image.Image,
+        prompt: Optional[str] = None
+    ) -> VisionResult:
+        """
+        Try providers in order until one succeeds.
+
+        Workflow:
+        1. For each provider in chain:
+           a. Try max_retries + 1 times
+           b. If timeout → log warning, try next
+           c. If error → log warning, try next
+           d. If success → return result
+        2. If all providers fail → raise VisionProviderError
+
+        Args:
+            image: PIL Image to process
+            prompt: Optional custom prompt
+
+        Returns:
+            VisionResult from first successful provider
+
+        Raises:
+            VisionProviderError: If all providers fail
+
+        Example:
+            >>> chain = FallbackChain(
+            ...     [gemini_provider, openai_provider],
+            ...     timeout_sec=30,
+            ...     max_retries=2
+            ... )
+            >>> result = await chain.extract_text(image)
+            >>> print(f"Provider used: {result.provider_name}")
+        """
+        pass
+```
+
+---
+
+### 2.5 Image Editors
+
+#### `src/image_editing/base.py`
+
+```python
+class ImageEditor(ABC):
+    """
+    Abstract base class for image editors.
+
+    All image editor implementations (Gemini, Imagen, PIL-based) must extend this class.
+    """
+
+    @abstractmethod
+    def edit_image(
+        self,
+        image_path: str,
+        translations: Dict[str, str],
+        output_path: Optional[str] = None
+    ) -> EditResult:
+        """
+        Edit an image by replacing text according to translations.
+
+        Synchronous version - runs in thread pool when called from async context.
+
+        Args:
+            image_path: Path to the input image file
+            translations: Dictionary mapping Russian text to English text
+                Example: {'Вход': 'Entry', 'Стоп': 'Stop Loss'}
+            output_path: Optional path to save the edited image
+
+        Returns:
+            EditResult with:
+                - success: bool (True if editing succeeded)
+                - edited_image: PIL Image object (or None if failed)
+                - error: Error message if failed
+                - method: Name of editing method/backend used
+                - metadata: Additional metadata
+
+        Example:
+            >>> editor = ImageEditorFactory.get_editor('gemini')
+            >>> translations = {'Вход': 'Entry', 'TP1': 'TP1'}
+            >>> result = editor.edit_image(
+            ...     "/tmp/chart.jpg",
+            ...     translations,
+            ...     "/tmp/chart_edited.jpg"
+            ... )
+            >>> if result.success:
+            ...     print(f"Edited with {result.method}")
+        """
+        pass
+
+    @abstractmethod
+    async def edit_image_async(
+        self,
+        image_path: str,
+        translations: Dict[str, str],
+        output_path: Optional[str] = None
+    ) -> EditResult:
+        """
+        Async version of edit_image.
+
+        Args:
+            image_path: Path to the input image file
+            translations: Dictionary mapping original text to replacement text
+            output_path: Optional path to save the edited image
+
+        Returns:
+            EditResult (same as sync version)
+        """
+        pass
+
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Get the name of this editor (e.g., 'gemini', 'pil')."""
+        pass
+
+    @abstractmethod
+    def is_available(self) -> bool:
+        """Check if this editor is available for use."""
+        pass
+```
+
+---
+
+#### `src/image_editing/base.py` - Data Classes
+
+```python
+@dataclass
+class EditResult:
+    """
+    Result of an image editing operation.
+
+    Attributes:
+        success: Whether the edit operation succeeded
+        edited_image: The edited PIL Image (None if failed)
+        error: Error message if operation failed
+        method: Name of the editing method/backend used
+        metadata: Additional metadata about the operation
+    """
+    success: bool
+    edited_image: Optional[Image.Image] = None
+    error: Optional[str] = None
+    method: str = "unknown"
+    metadata: Optional[Dict] = None
+```
+
+---
+
+### 2.6 Media
 
 #### `src/media/downloader.py`
 
@@ -293,7 +677,7 @@ async def download_and_process_media(
 
 ---
 
-### 2.5 Parsers
+### 2.7 Parsers
 
 #### `src/parsers/signal_parser.py`
 
@@ -349,7 +733,7 @@ def parse_trading_signal(text: str) -> dict:
 
 ---
 
-### 2.6 Formatters
+### 2.8 Formatters
 
 #### `src/formatters/message.py`
 
@@ -419,7 +803,7 @@ def restore_trading_terms(text: str) -> str:
 
 ---
 
-### 2.7 Database Queries
+### 2.9 Database Queries
 
 #### `src/db/queries.py`
 
@@ -548,7 +932,7 @@ async def db_update_signal_update(update_id: int, data: dict) -> None:
 
 ---
 
-### 2.8 Telethon Setup
+### 2.10 Telethon Setup
 
 #### `src/telethon_setup.py`
 

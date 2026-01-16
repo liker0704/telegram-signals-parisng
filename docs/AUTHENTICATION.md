@@ -258,6 +258,86 @@ Periodically check your active sessions in Telegram:
 
 ---
 
+## Migration Guide
+
+### For New Users
+
+Follow the standard setup in [QUICKSTART.md](../QUICKSTART.md):
+
+1. Install local dependencies: `pip install telethon python-dotenv`
+2. Run authentication: `python auth_local.py`
+3. Add session strings to `.env`
+4. Start Docker: `docker-compose up -d`
+
+---
+
+### For Existing Users (File-Based Sessions)
+
+You have two options:
+
+#### Option A: Keep Using File-Based Sessions (Not Recommended)
+
+Your current setup will continue to work if:
+- You have existing `.session` files
+- Sessions are mounted into Docker via volumes
+- You don't need to regenerate sessions
+
+**No action required**, but consider migrating to StringSession for better Docker compatibility.
+
+#### Option B: Migrate to StringSession (Recommended)
+
+**Benefits:**
+- Simpler Docker deployment
+- No volume mounting needed
+- Easier backup and transfer
+- Better security (sessions in .env, not committed)
+
+**Migration Steps:**
+
+1. **Install local dependencies:**
+   ```bash
+   pip install telethon python-dotenv
+   ```
+
+2. **Generate session strings:**
+   ```bash
+   python auth_local.py
+   ```
+
+3. **Update .env:**
+   ```ini
+   # Add these new fields:
+   READER_SESSION_STRING=1BVtsOMGBu7kNWFDM...
+   PUBLISHER_SESSION_STRING=1BVtsOMGBu8kNWFEM...
+
+   # Optional: Comment out old fields
+   # READER_SESSION_FILE=sessions/reader.session
+   # PUBLISHER_SESSION_FILE=sessions/publisher.session
+   ```
+
+4. **Restart Docker:**
+   ```bash
+   docker-compose restart app
+   ```
+
+5. **Verify in logs:**
+   ```bash
+   docker-compose logs -f app | grep "session_type"
+   ```
+
+   You should see:
+   ```
+   INFO - Reader client connected ... session_type=StringSession
+   INFO - Publisher client connected ... session_type=StringSession
+   ```
+
+6. **Clean up old session files (optional):**
+   ```bash
+   rm -rf sessions/
+   ```
+
+---
+
 ## FAQ
 
 **Q: Can I use the same account for both Reader and Publisher?**

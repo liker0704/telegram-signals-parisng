@@ -19,6 +19,10 @@ An asynchronous backend service that reads trading signals from a Russian Telegr
 - **PostgreSQL Persistence**: Stores signal history and message mappings
 - **Translation Caching**: Reduces API costs by caching translations
 - **Docker Ready**: Single-command deployment with Docker Compose
+- **YAML Signal Detection**: Configurable per-caller signal detection patterns via `config/callers.yaml`
+- **Flow Tracking**: TTL-based ownership tracking ensures only the original caller can update their signals
+- **Promo Content Stripping**: Automatically removes donation links and promotional content before forwarding
+- **Optional Forwarding**: Forward original (non-translated) messages to a separate group
 
 ## Architecture Overview
 
@@ -233,13 +237,54 @@ See [.env.example](.env.example) for complete configuration options including:
 | `TIMEOUT_GEMINI_SEC` | Max timeout for Gemini API calls | `30` |
 | `MAX_IMAGE_SIZE_MB` | Maximum image size to process | `50` |
 | `LOG_LEVEL` | Logging verbosity (DEBUG/INFO/WARNING/ERROR) | `INFO` |
+| `FORWARD_GROUP_ID` | Optional: Forward original messages to another group | `None` |
+| `FLOW_TTL_SECONDS` | TTL for signal ownership tracking (seconds) | `259200` (72h) |
+
+## Signal Detection Patterns
+
+The bot uses YAML-based configuration (`config/callers.yaml`) for flexible signal detection:
+
+### Per-Caller Patterns
+
+Each caller can have their own signal detection pattern:
+
+```yaml
+callers:
+  1018248833:  # @Mark_Tivan
+    name: "Mark Tivan"
+    pattern: hashtag  # Uses #Идея pattern
+
+  468446980:  # @nikita_grin_bendi
+    name: "Nikita Grin (Bendi)"
+    pattern: bendi    # Uses ** BTC 🟢 LONG ** pattern
+```
+
+### Available Pattern Types
+
+| Pattern | Detection | Example |
+|---------|-----------|---------|
+| `hashtag` | `#Идея` or `#Idea` | `#Идея BTC LONG` |
+| `bendi` | `** PAIR 🟢 LONG **` | `** BTC 🟢 LONG **` |
+| `underscore` | `PAIR_direction` | `BTC_long` |
+| `simple` | `PAIR DIRECTION` | `BTC LONG` |
+
+### Fallback Patterns
+
+For unknown callers, multiple patterns are tried:
+
+```yaml
+fallback:
+  patterns:
+    - hashtag
+    - bendi
+```
 
 ## How It Works
 
 ### Signal Detection
 
 1. **Reader Account** listens to `SOURCE_GROUP_ID` for new messages
-2. Messages containing `#Идея` are identified as trading signals
+2. Caller's pattern (from `config/callers.yaml`) is matched against the message
 3. Message content and metadata are extracted
 
 ### Translation Pipeline
