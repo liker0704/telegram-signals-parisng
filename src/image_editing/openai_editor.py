@@ -158,10 +158,6 @@ class OpenAIImageEditor(ImageEditor):
                 model=self.model
             )
 
-            # Store original size to restore later
-            with Image.open(image_path) as original_img:
-                original_size = original_img.size
-
             # Build prompt from translations
             prompt = self._build_prompt(translations)
 
@@ -218,15 +214,6 @@ class OpenAIImageEditor(ImageEditor):
                         error="OpenAI response has no image data",
                         method=self.name
                     )
-
-                # Resize back to original dimensions if different
-                if edited_image.size != original_size:
-                    logger.debug(
-                        "Resizing to original size",
-                        from_size=edited_image.size,
-                        to_size=original_size
-                    )
-                    edited_image = edited_image.resize(original_size, Image.Resampling.LANCZOS)
 
                 # Save if output path specified
                 if output_path:
