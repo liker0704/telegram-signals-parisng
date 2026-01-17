@@ -1,9 +1,10 @@
 """Database connection management using asyncpg."""
 
 import asyncio
-import asyncpg
-from typing import Optional
 from contextlib import asynccontextmanager
+from typing import Optional
+
+import asyncpg
 
 from src.config import config
 from src.utils.logger import get_logger

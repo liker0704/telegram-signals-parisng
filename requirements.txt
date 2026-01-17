@@ -9,10 +9,10 @@
 # ==============================================================================
 
 # Telegram MTProto Client (user accounts, not bot API)
-telethon==1.42.0
+telethon>=1.42.0
 
 # Google Gemini API for translation and OCR
-google-generativeai==0.8.0
+google-generativeai>=0.8.0
 google-genai>=1.0.0              # New SDK for Gemini 3 Pro Image
 
 # LangChain for multi-provider vision (OCR)
@@ -22,43 +22,35 @@ langchain-openai>=0.2.0
 langchain-anthropic>=0.3.0
 
 # Async HTTP client for API calls
-aiohttp==3.10.0
+aiohttp>=3.10.0
 
 # PostgreSQL drivers
-psycopg2-binary==2.9.9      # Sync driver (for migrations)
-asyncpg==0.30.0             # Async driver (for application)
-
-# ORM and database utilities
-sqlalchemy==2.0.23
+psycopg2-binary>=2.9.10     # Sync driver (for migrations)
+asyncpg>=0.30.0             # Async driver (for application)
 
 # Environment configuration
-python-dotenv==1.0.0
+python-dotenv>=1.0.0
 
 # Structured logging
-structlog==24.1.0
+structlog>=24.1.0
 
 # Data validation
 pydantic>=2.9.0
 pydantic-settings>=2.1.0
 
 # YAML configuration
-PyYAML==6.0.2
-
-# Redis client (optional, for caching)
-redis==5.0.1
-aioredis==2.0.1
+PyYAML>=6.0.2
 
 # Google Translate fallback (free tier)
 deep-translator>=1.11.0
 
 # Utilities
-cryptography==41.0.0        # For Telethon session encryption
-pillow==10.1.0              # Image processing (optional)
-opencv-python-headless>=4.8.0  # Image processing for OCR
+cryptography>=41.0.0        # For Telethon session encryption
+pillow>=10.4.0              # Image processing
 openai>=1.40.0              # OpenAI API for translation and image editing
 
 # Development dependencies (optional)
-pytest==7.4.0
-pytest-asyncio==0.21.1
-pytest-cov==4.1.0
+pytest>=7.4.0
+pytest-asyncio>=0.23.0
+pytest-cov>=4.1.0
 ruff>=0.8.0

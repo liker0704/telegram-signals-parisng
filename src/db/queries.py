@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from typing import Optional
 
-from src.db.connection import fetchrow, fetchval, execute
+from src.db.connection import execute, fetchrow, fetchval
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)

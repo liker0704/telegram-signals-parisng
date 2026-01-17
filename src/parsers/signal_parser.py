@@ -4,6 +4,7 @@ Parse trading signals to extract structured fields using regex.
 """
 
 import re
+
 from src.callers_config import CallersConfig
 
 # Bendi format: **TICKER 🟢LONG** or **TICKER 🔴SHORT** (may span multiple lines)

@@ -1,0 +1,76 @@
+[project]
+name = "telegram-signals-parsing"
+version = "1.0.0"
+description = "Telegram Signal Translator Bot"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    # Telegram MTProto Client
+    "telethon>=1.42.0",
+
+    # Google Gemini API
+    "google-generativeai>=0.8.0",
+    "google-genai>=1.0.0",
+
+    # LangChain for multi-provider vision (OCR)
+    "langchain-core>=0.3.0",
+    "langchain-google-genai>=2.0.0",
+    "langchain-openai>=0.2.0",
+    "langchain-anthropic>=0.3.0",
+
+    # Async HTTP client
+    "aiohttp>=3.10.0",
+
+    # PostgreSQL drivers
+    "psycopg2-binary>=2.9.10",
+    "asyncpg>=0.30.0",
+
+    # Environment configuration
+    "python-dotenv>=1.0.0",
+
+    # Structured logging
+    "structlog>=24.1.0",
+
+    # Data validation
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.1.0",
+
+    # YAML configuration
+    "pyyaml>=6.0.2",
+
+    # Google Translate fallback
+    "deep-translator>=1.11.0",
+
+    # Utilities
+    "cryptography>=41.0.0",
+    "pillow>=10.4.0",
+    "openai>=1.40.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.8.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.8.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

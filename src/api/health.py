@@ -6,6 +6,7 @@ Provides /health endpoint for external health checks (Render.com, etc.)
 
 import time
 from typing import Optional
+
 from aiohttp import web
 
 from src.config import config
@@ -43,7 +44,7 @@ async def health_handler(request: web.Request) -> web.Response:
 
     # Check Telegram clients
     try:
-        from src.telethon_setup import get_reader_client, get_publisher_client
+        from src.telethon_setup import get_publisher_client, get_reader_client
 
         reader = get_reader_client()
         status["reader_client"] = "connected" if reader and reader.is_connected() else "disconnected"

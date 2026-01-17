@@ -2,6 +2,7 @@
 
 import threading
 from typing import Optional
+
 from openai import OpenAI
 
 from src.config import config

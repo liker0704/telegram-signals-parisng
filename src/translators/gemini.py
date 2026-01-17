@@ -2,6 +2,7 @@
 
 import threading
 from typing import Optional
+
 import google.generativeai as genai
 
 from src.config import config

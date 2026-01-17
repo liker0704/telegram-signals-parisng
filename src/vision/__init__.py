@@ -19,8 +19,8 @@ from src.vision.base import (
     VisionProviderError,
     VisionResult,
 )
-from src.vision.fallback import FallbackChain
 from src.vision.factory import VisionProviderFactory
+from src.vision.fallback import FallbackChain
 
 __all__ = [
     "VisionProvider",

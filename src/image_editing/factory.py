@@ -5,14 +5,14 @@ This module provides a factory pattern for instantiating image editors
 based on configuration. Supports primary editor selection with fallback.
 """
 
-from typing import Dict, Type, Optional
+from typing import Dict, Optional, Type
 
 import structlog
 
 from src.config import config
 from src.image_editing.base import ImageEditor
-from src.image_editing.openai_editor import OpenAIImageEditor
 from src.image_editing.gemini_editor import GeminiImageEditor
+from src.image_editing.openai_editor import OpenAIImageEditor
 
 logger = structlog.get_logger(__name__)
 

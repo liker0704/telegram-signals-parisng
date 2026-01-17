@@ -219,9 +219,9 @@ class TestHandleSignalUpdateUserFiltering:
             mock_start_flow.assert_called_once_with(1, 111)  # signal_id, user_id
 
     @pytest.mark.asyncio
-    async def test_source_user_id_zero_allowed(self, mock_event, parent_signal_dict):
+    async def test_source_user_id_zero_allowed(self, mock_event, parent_signal_dict, mock_config_allowed):
         """Reply to signal with source_user_id=0 (anonymous) should be allowed."""
-        mock_event.message.sender_id = 222  # Any user
+        mock_event.message.sender_id = 222  # Any user (must be in allowed_users_list)
         parent_signal_dict['source_user_id'] = 0  # Anonymous sender
 
         with patch('src.handlers.update_handler.db_find_update_by_source_msg', new_callable=AsyncMock) as mock_find_update, \
@@ -262,9 +262,9 @@ class TestHandleSignalUpdateUserFiltering:
             mock_start_flow.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_source_user_id_none_allowed(self, mock_event, parent_signal_dict):
+    async def test_source_user_id_none_allowed(self, mock_event, parent_signal_dict, mock_config_allowed):
         """Reply to signal with source_user_id=None (fallback) should be allowed."""
-        mock_event.message.sender_id = 333  # Any user
+        mock_event.message.sender_id = 222  # Any user (must be in allowed_users_list)
         parent_signal_dict['source_user_id'] = None  # No source user
 
         with patch('src.handlers.update_handler.db_find_update_by_source_msg', new_callable=AsyncMock) as mock_find_update, \

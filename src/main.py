@@ -15,19 +15,19 @@ from typing import Set
 
 from telethon import events
 
+from src.api.health import start_health_server, stop_health_server
 from src.config import config
-from src.utils.logger import setup_logging, get_logger
-from src.db.connection import init_db, close_db
-from src.telethon_setup import (
-    init_clients,
-    verify_group_access,
-    disconnect_clients,
-    get_reader_client
-)
+from src.db.connection import close_db, init_db
 from src.handlers.signal_handler import handle_new_signal
 from src.handlers.update_handler import handle_signal_update
 from src.parsers.signal_parser import is_signal
-from src.api.health import start_health_server, stop_health_server
+from src.telethon_setup import (
+    disconnect_clients,
+    get_reader_client,
+    init_clients,
+    verify_group_access,
+)
+from src.utils.logger import get_logger, setup_logging
 
 # Initialize logging
 setup_logging(config.LOG_LEVEL, config.ENVIRONMENT)

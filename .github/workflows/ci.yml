@@ -13,17 +13,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
         with:
-          python-version: "3.11"
-          cache: "pip"
+          enable-cache: true
 
-      - name: Install ruff
-        run: pip install ruff
+      - name: Set up Python
+        run: uv python install 3.11
 
       - name: Run ruff check
-        run: ruff check src/
+        run: uv run ruff check src/
 
   test:
     name: Test
@@ -44,29 +43,19 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-      redis:
-        image: redis:7-alpine
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
         with:
-          python-version: "3.11"
-          cache: "pip"
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.11
 
       - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install -r requirements.txt
+        run: uv sync --frozen
 
       - name: Run tests
         env:
@@ -75,7 +64,6 @@ jobs:
           POSTGRES_DB: test_db
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: test_password
-          REDIS_URL: redis://localhost:6379/0
           GEMINI_API_KEY: test_key
           READER_API_ID: 12345
           READER_API_HASH: test_hash
@@ -85,7 +73,7 @@ jobs:
           PUBLISHER_PHONE: +1234567890
           SOURCE_GROUP_ID: -100123456789
           TARGET_GROUP_ID: -100987654321
-        run: pytest tests/ -v --tb=short
+        run: uv run pytest tests/ -v --tb=short
 
   build:
     name: Build Docker

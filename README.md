@@ -32,7 +32,7 @@ An asynchronous backend service that reads trading signals from a Russian Telegr
 └─────────────────────────────────────────────────────────────────┘
 
 Account A (Reader)            Core Logic              Account B (Publisher)
-Telethon Client 1         PostgreSQL + Redis         Telethon Client 2
+Telethon Client 1            PostgreSQL              Telethon Client 2
      ↓                         ↓                           ↑
 Listen to                process_signal()            Send to
 SOURCE_GROUP            translate_text()          TARGET_GROUP
@@ -80,8 +80,10 @@ telegram-signals-parisng/
 ├── migrations/
 │   └── 001_init_schema.sql        # Database schema
 ├── docker-compose.yml              # Docker orchestration
-├── Dockerfile                      # Container image
-├── requirements.txt                # Python dependencies
+├── Dockerfile                      # Container image (uses uv)
+├── pyproject.toml                  # Project configuration
+├── uv.lock                         # Locked dependencies
+├── requirements.txt                # Legacy pip dependencies
 ├── .env.example                    # Environment template
 └── README.md                       # This file
 ```
@@ -144,7 +146,7 @@ docker-compose up -d
 ```
 
 The service will:
-- Start PostgreSQL and Redis containers
+- Start PostgreSQL container
 - Initialize database schema
 - Authenticate both Telegram accounts (you'll receive verification codes via Telegram)
 - Begin listening for signals in the source group
@@ -165,6 +167,10 @@ docker-compose ps
 
 1. **Install dependencies locally** (outside Docker):
    ```bash
+   # Using uv (recommended)
+   uv sync
+
+   # Or using pip
    pip install telethon python-dotenv
    ```
 
@@ -405,17 +411,25 @@ docker-compose logs db
 ### Local Development Setup
 
 ```bash
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+# Install uv (if not installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install dependencies
-pip install -r requirements.txt
+# Install dependencies (creates .venv automatically)
+uv sync
 
 # Run migrations
 psql -U postgres signal_bot < migrations/001_init_schema.sql
 
 # Run application
+uv run python -m src.main
+```
+
+Alternative with pip:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 python -m src.main
 ```
 
@@ -423,13 +437,16 @@ python -m src.main
 
 ```bash
 # Unit tests
-pytest tests/
+uv run pytest tests/
 
 # Integration tests
-pytest tests/integration/
+uv run pytest tests/integration/
 
 # With coverage
-pytest --cov=src tests/
+uv run pytest --cov=src tests/
+
+# Lint check
+uv run ruff check src/
 ```
 
 ### Utility Scripts

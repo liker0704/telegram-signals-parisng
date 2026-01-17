@@ -6,9 +6,9 @@ import threading
 from typing import Optional
 
 from src.config import config
-from src.utils.logger import get_logger
-from src.translators.openai import openai_translate
 from src.translators.google import google_translate
+from src.translators.openai import openai_translate
+from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 

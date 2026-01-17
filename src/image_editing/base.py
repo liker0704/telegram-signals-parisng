@@ -8,6 +8,7 @@ and the result dataclass for edit operations.
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, Optional
+
 from PIL import Image
 
 

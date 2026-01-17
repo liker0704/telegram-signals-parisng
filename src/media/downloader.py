@@ -1,8 +1,8 @@
 """Media downloader for Telegram messages."""
 
 import os
-from typing import Optional, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, Optional
 
 from src.config import config
 from src.utils.logger import get_logger

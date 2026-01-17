@@ -6,21 +6,21 @@ from datetime import datetime
 from telethon.events import NewMessage
 
 from src.config import config
-from src.utils.logger import get_logger
-from src.utils.text_cleaner import strip_promo_content
-from src.formatters.message import build_final_message
-from src.translators.fallback import translate_text_with_fallback
-from src.ocr import process_image
-from src.media.downloader import download_and_process_media, cleanup_media
 from src.db.queries import (
     db_find_signal_by_source_msg,
+    db_find_update_by_source_msg,
     db_insert_signal_update,
     db_update_signal_update,
-    db_find_update_by_source_msg
 )
-from src.telethon_setup import get_publisher_client
+from src.formatters.message import build_final_message
 from src.handlers.forward_helper import forward_original_message, is_forwarding_enabled
-from src.state import start_flow, get_flow_owner
+from src.media.downloader import cleanup_media, download_and_process_media
+from src.ocr import process_image
+from src.state import get_flow_owner, start_flow
+from src.telethon_setup import get_publisher_client
+from src.translators.fallback import translate_text_with_fallback
+from src.utils.logger import get_logger
+from src.utils.text_cleaner import strip_promo_content
 
 logger = get_logger(__name__)
 

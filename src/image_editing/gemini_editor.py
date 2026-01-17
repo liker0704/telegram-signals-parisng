@@ -11,9 +11,9 @@ from typing import Dict, Optional
 import structlog
 from PIL import Image
 
-from src.image_editing.base import ImageEditor, EditResult
-from src.utils.security import validate_image_file
 from src.config import config
+from src.image_editing.base import EditResult, ImageEditor
+from src.utils.security import validate_image_file
 
 logger = structlog.get_logger(__name__)
 

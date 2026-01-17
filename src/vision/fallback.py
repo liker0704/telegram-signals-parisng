@@ -3,10 +3,11 @@ FallbackChain - Orchestrates fallback between multiple vision providers.
 """
 import asyncio
 from typing import List, Optional
+
 from PIL import Image
 
-from src.vision.base import VisionProvider, VisionResult, VisionProviderError
 from src.utils.logger import get_logger
+from src.vision.base import VisionProvider, VisionProviderError, VisionResult
 
 logger = get_logger(__name__)
 

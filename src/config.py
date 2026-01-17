@@ -5,7 +5,8 @@ Uses Pydantic Settings to load configuration from .env file.
 All environment variables are validated and type-checked.
 """
 
-from typing import Optional, List
+from typing import List, Optional
+
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 

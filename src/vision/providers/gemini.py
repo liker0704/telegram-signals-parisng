@@ -18,7 +18,7 @@ from PIL import Image
 
 from src.config import config
 from src.utils.logger import get_logger
-from src.vision.base import VisionProvider, VisionProviderError, VisionResult, TextExtraction
+from src.vision.base import TextExtraction, VisionProvider, VisionProviderError, VisionResult
 from src.vision.prompts import OCR_EXTRACTION_PROMPT
 
 logger = get_logger(__name__)

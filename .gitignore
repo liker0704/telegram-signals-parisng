@@ -171,3 +171,8 @@ service-account.json
 ./tmp
 /tmp
 tmp/
+
+# Data exports (not for Git)
+data/production_*.json
+data/*_export.json
+data/test_output/
