@@ -116,7 +116,7 @@ async def translate_image_ocr(image_path: str) -> Optional[str]:
         logger.warning("Image file not found for OCR", path=image_path)
         return None
     except Exception as e:
-        logger.error("OCR failed", error=str(e), path=image_path)
+        logger.error("OCR failed", error=str(e), path=image_path, exc_info=True)
         return None
 
 
@@ -151,5 +151,5 @@ async def process_image(image_path: str) -> Optional[str]:
             logger.warning("Image editing returned None, will use original")
             return None
     except Exception as e:
-        logger.error("Image processing failed", error=str(e), path=image_path)
+        logger.error("Image processing failed", error=str(e), path=image_path, exc_info=True)
         return None

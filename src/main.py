@@ -104,7 +104,8 @@ def register_handlers(reader_client) -> None:
         except Exception as e:
             logger.error("Error dispatching message handler",
                         message_id=message.id,
-                        error=str(e))
+                        error=str(e),
+                        exc_info=True)
 
     logger.info("Event handlers registered",
                 source_group=config.SOURCE_GROUP_ID)
@@ -127,13 +128,10 @@ async def health_check_loop():
             pool = get_pool()
             async with pool.acquire() as conn:
                 await conn.execute("SELECT 1")
-            logger.debug("Health check: Database OK")
 
             # Check Telethon clients
             reader = get_reader_client()
-            if reader.is_connected():
-                logger.debug("Health check: Reader client OK")
-            else:
+            if not reader.is_connected():
                 logger.warning("Health check: Reader client disconnected")
 
         except Exception as e:

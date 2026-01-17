@@ -72,7 +72,7 @@ async def get_vision_chain() -> Optional[FallbackChain]:
                         logger.warning("No vision providers available, vision chain not created")
 
                 except Exception as e:
-                    logger.error("Failed to create vision chain", error=str(e))
+                    logger.error("Failed to create vision chain", error=str(e), exc_info=True)
 
     return _vision_chain
 
@@ -117,7 +117,7 @@ async def extract_text_from_image(image: Image.Image) -> List[Dict[str, str]]:
             logger.warning("Vision chain returned no result or extractions")
 
     except Exception as e:
-        logger.error("Vision chain extraction failed", error=str(e), error_type=type(e).__name__)
+        logger.error("Vision chain extraction failed", error=str(e), error_type=type(e).__name__, exc_info=True)
 
     return []
 
@@ -219,7 +219,7 @@ def edit_image_text_sync(image_path: str, output_path: str) -> Optional[str]:
             editor = ImageEditorFactory.get_editor_with_fallback()
             logger.info("Image editor ready", editor=editor.name)
         except Exception as e:
-            logger.error("Failed to get image editor", error=str(e))
+            logger.error("Failed to get image editor", error=str(e), exc_info=True)
             return None
 
         # Edit image
@@ -246,7 +246,7 @@ def edit_image_text_sync(image_path: str, output_path: str) -> Optional[str]:
             return None
 
     except Exception as e:
-        logger.error("Image editing failed", error=str(e), path=image_path)
+        logger.error("Image editing failed", error=str(e), path=image_path, exc_info=True)
         return None
 
 
@@ -265,5 +265,5 @@ async def edit_image_text(image_path: str, output_path: str) -> Optional[str]:
         result = await asyncio.to_thread(edit_image_text_sync, image_path, output_path)
         return result
     except Exception as e:
-        logger.error("Async image editing failed", error=str(e), path=image_path)
+        logger.error("Async image editing failed", error=str(e), path=image_path, exc_info=True)
         return None

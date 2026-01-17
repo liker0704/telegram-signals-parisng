@@ -3,14 +3,15 @@ Callers Configuration Loader
 Singleton class to load and manage YAML config for signal callers.
 """
 
-import logging
 import re
 from pathlib import Path
 from typing import Dict, List, Optional
 
 import yaml
 
-logger = logging.getLogger(__name__)
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class CallersConfig:
